@@ -1,0 +1,19 @@
+before_script:
+  - which java
+  - which javac
+  - java -version
+  - javac -version
+
+build:
+  cache:
+    paths:
+      - .gradle
+  script:
+    - export GRADLE_BUILD_SIGNED=true
+    - ./gradlew build
+  artifacts:
+    paths:
+      - build/libs/*.jar
+    expire_in: 1 month
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
