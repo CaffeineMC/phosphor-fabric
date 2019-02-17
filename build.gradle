@@ -1,0 +1,104 @@
+buildscript {
+    repositories {
+        jcenter()
+
+        maven { url = 'https://repo.spongepowered.org/maven' }
+        maven { url = 'http://files.minecraftforge.net/maven' }
+    }
+
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'org.spongepowered.mixin'
+
+version = "1.0"
+group = "me.jellysquid.mods.phosphor"
+archivesBaseName = "phosphor"
+
+sourceSets {
+    api {
+        java { srcDir "src/api/java" }
+    }
+}
+
+compileJava {
+    sourceCompatibility = targetCompatibility = '1.8'
+}
+
+minecraft {
+    version = "1.12.2-14.23.5.2768"
+    runDir = "run"
+
+    mappings = "stable_39"
+}
+
+repositories {
+    maven { url = 'https://repo.spongepowered.org/maven' }
+}
+
+configurations {
+    shade
+
+    compile.extendsFrom shade
+}
+
+dependencies {
+    shade('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+        transitive = false
+    }
+}
+
+jar {
+    from sourceSets.api.output
+
+    manifest.mainAttributes(
+            "FMLAT": "phosphor_at.cfg",
+            "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.AetherFMLLoadingPlugin",
+            "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
+            "TweakOrder": 0,
+            "FMLCorePluginContainsFMLMod": true,
+            "ForceLoadAsMod": true
+    )
+
+    configurations.shade.each { dep ->
+        from(project.zipTree(dep)) {
+            rename 'LICENSE.txt', 'org/spongepowered/LICENSE.txt'
+
+            exclude 'META-INF/*.SF'
+            exclude 'META-INF/*.RSA'
+            exclude 'META-INF/*.MF'
+        }
+    }
+
+    classifier = 'universal'
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+
+        expand 'version': project.version, 'mcversion': project.minecraft.version
+    }
+
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}
+
+
+mixin {
+    add sourceSets.main, "mixins.phosphor.refmap.json"
+}
+
+idea {
+    module {
+        inheritOutputDirs = true
+    }
+}
