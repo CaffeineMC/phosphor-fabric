@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 
 @SuppressWarnings("unused")
+@IFMLLoadingPlugin.MCVersion("1.12.2")
 public class PhosphorFMLLoadingPlugin implements IFMLLoadingPlugin {
     public PhosphorFMLLoadingPlugin() {
         MixinBootstrap.init();

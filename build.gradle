@@ -15,25 +15,29 @@ buildscript {
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'org.spongepowered.mixin'
 
-version = "1.0"
-group = "me.jellysquid.mods.phosphor"
-archivesBaseName = "phosphor"
-
-sourceSets {
-    api {
-        java { srcDir "src/api/java" }
-    }
+if (System.getenv("CI_JOB_ID") != null) {
+    version = "${minecraft_version}-${mod_version}+build-${System.getenv("CI_JOB_ID")}"
+} else {
+    version = "${minecraft_version}-${mod_version}+snapshot-${System.currentTimeMillis()}"
 }
+
+group = "me.jellysquid.mods"
+archivesBaseName = "${mod_name}"
 
 compileJava {
     sourceCompatibility = targetCompatibility = '1.8'
 }
 
 minecraft {
-    version = "1.12.2-14.23.5.2768"
+    version = "${minecraft_version}-${forge_version}"
     runDir = "run"
 
-    mappings = "stable_39"
+    mappings = forge_mappings
+}
+
+minecraft {
+    clientJvmArgs += "-Dfml.coreMods.load=me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin"
+    serverJvmArgs += "-Dfml.coreMods.load=me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin"
 }
 
 repositories {
@@ -53,11 +57,15 @@ dependencies {
 }
 
 jar {
-    from sourceSets.api.output
+    from sourceSets.main.output
+
+    manifest {
+        attributes 'Maven-Artifact': "${group}:${archivesBaseName}:${version}"
+    }
 
     manifest.mainAttributes(
             "FMLAT": "phosphor_at.cfg",
-            "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.AetherFMLLoadingPlugin",
+            "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin",
             "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
             "TweakOrder": 0,
             "FMLCorePluginContainsFMLMod": true,
@@ -97,8 +105,20 @@ mixin {
     add sourceSets.main, "mixins.phosphor.refmap.json"
 }
 
-idea {
-    module {
-        inheritOutputDirs = true
-    }
+minecraft {
+    makeObfSourceJar = false
+}
+
+task signJar(type: SignJar, dependsOn: reobfJar) {
+    keyStore = System.getenv('SIGN_KEYSTORE')
+    alias = System.getenv('SIGN_ALIAS')
+    storePass = System.getenv('SIGN_STORE_PASS')
+    keyPass = System.getenv('SIGN_KEY_PASS')
+
+    inputFile = jar.archivePath
+    outputFile = jar.archivePath
+}
+
+if (System.getenv("SIGN_BUILD") == 'true') {
+    build.dependsOn signJar
 }

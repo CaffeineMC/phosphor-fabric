@@ -20,7 +20,7 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
             return null;
         }
 
-        return "mixins.aether.refmap.json";
+        return "mixins.phosphor.refmap.json";
     }
 
     @Override

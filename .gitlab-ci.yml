@@ -9,7 +9,7 @@ build:
     paths:
       - .gradle
   script:
-    - export GRADLE_BUILD_SIGNED=true
+    - export SIGN_BUILD=true
     - ./gradlew build
   artifacts:
     paths:
