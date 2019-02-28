@@ -22,8 +22,10 @@ pipeline {
         }
 
         stage('Publish') {
-            when { branch 'master' }
-            when { tag 'release-*' }
+            when {
+                branch 'master'
+                tag 'release-*'
+            }
 
             environment {
                 MAVEN_SECRETS_FILE = credentials('maven-secrets')
