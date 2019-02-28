@@ -14,6 +14,7 @@ buildscript {
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'org.spongepowered.mixin'
+apply plugin: 'maven-publish'
 
 if (System.getenv("BUILD_NUMBER") != null) {
     version = "${minecraft_version}-${mod_version}+build-${System.getenv("BUILD_NUMBER")}"
@@ -106,7 +107,7 @@ mixin {
 }
 
 minecraft {
-    makeObfSourceJar = false
+    makeObfSourceJar = true
 }
 
 task signJar(type: SignJar, dependsOn: reobfJar) {
@@ -121,4 +122,52 @@ task signJar(type: SignJar, dependsOn: reobfJar) {
 
 if (System.getenv("SIGN_BUILD") == 'true') {
     build.dependsOn signJar
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+
+    from sourceSets.main.allSource
+}
+
+
+task deobfJar(type: Jar, dependsOn: classes) {
+    classifier = 'deobf'
+
+    from sourceSets.main.output
+}
+
+publishing {
+    publications {
+        mod(MavenPublication) {
+            artifact jar
+            artifact sourcesJar
+            artifact deobfJar
+
+            pom {
+                version = "${minecraft_version}-${mod_version}-SNAPSHOT"
+            }
+        }
+    }
+
+    repositories {
+        def mavenSecretsPath = System.getenv("MAVEN_SECRETS_FILE")
+
+        if (mavenSecretsPath != null) {
+            def mavenSecretsFile = file(mavenSecretsPath).newReader()
+            def mavenSecrets = new Properties()
+            mavenSecrets.load(mavenSecretsFile)
+
+            maven {
+                url = System.getenv("MAVEN_PUBLISH_URL")
+
+                credentials {
+                    username = System.getenv("MAVEN_PUBLISH_USERNAME")
+                    password = System.getenv("MAVEN_PUBLISH_PASSWORD")
+                }
+            }
+        }
+    }
+
+
 }
