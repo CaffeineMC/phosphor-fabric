@@ -159,11 +159,11 @@ publishing {
             mavenSecrets.load(mavenSecretsFile)
 
             maven {
-                url = System.getenv("MAVEN_PUBLISH_URL")
+                url = mavenSecrets.publishUrl
 
                 credentials {
-                    username = System.getenv("MAVEN_PUBLISH_USERNAME")
-                    password = System.getenv("MAVEN_PUBLISH_PASSWORD")
+                    username = mavenSecrets.username
+                    password = mavenSecrets.password
                 }
             }
         }
