@@ -131,9 +131,10 @@ mixin {
 publishing {
     publications {
         mod(MavenPublication) {
-            artifact jar
             artifact deobfJar
             artifact sourcesJar
+
+            from components.java
         }
     }
 
