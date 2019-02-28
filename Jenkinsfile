@@ -28,6 +28,9 @@ pipeline {
 
             environment {
                 MAVEN_SECRETS_FILE = credentials('maven-secrets')
+
+                JARSIGN_KEYSTORE_FILE = credentials('angeline-jarsign-keystore')
+                JARSIGN_SECRETS_FILE = credentials('angeline-jarsign-secrets')
             }
 
             steps {
