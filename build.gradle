@@ -140,13 +140,10 @@ task deobfJar(type: Jar, dependsOn: classes) {
 publishing {
     publications {
         mod(MavenPublication) {
-            artifact jar
             artifact sourcesJar
             artifact deobfJar
 
-            pom {
-                version = "${minecraft_version}-${mod_version}.${System.getenv("BUILD_NUMBER")}"
-            }
+            from components.java
         }
     }
 
