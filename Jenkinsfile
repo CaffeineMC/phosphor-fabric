@@ -24,7 +24,6 @@ pipeline {
         stage('Publish') {
             when {
                 branch 'master'
-                tag 'release-*'
             }
 
             environment {
