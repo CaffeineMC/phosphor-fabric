@@ -17,7 +17,7 @@ public class PhosphorMod {
 
     public static final String MOD_VERSION = "1.12.2-0.1.2";
 
-    public static final String MOD_FINGERPRINT = "778988372ed91e06fc6bf721f62d2b9718e2564b40e77e738e9edb20b0a09df4";
+    public static final String MOD_FINGERPRINT = "f0387d288626cc2d937daa504e74af570c52a2f1";
 
     public static final Logger LOGGER = LogManager.getLogger("AetherII");
 
