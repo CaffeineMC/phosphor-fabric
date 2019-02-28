@@ -60,18 +60,7 @@ dependencies {
 jar {
     from sourceSets.main.output
 
-    manifest {
-        attributes 'Maven-Artifact': "${group}:${archivesBaseName}:${version}"
-    }
-
-    manifest.mainAttributes(
-            "FMLAT": "phosphor_at.cfg",
-            "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin",
-            "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
-            "TweakOrder": 0,
-            "FMLCorePluginContainsFMLMod": true,
-            "ForceLoadAsMod": true
-    )
+    applyJarAttributes(manifest)
 
     configurations.shade.each { dep ->
         from(project.zipTree(dep)) {
@@ -101,6 +90,17 @@ processResources {
     }
 }
 
+def applyJarAttributes(manifest) {
+    manifest.mainAttributes(
+            "FMLAT": "phosphor_at.cfg",
+            "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin",
+            "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
+            "TweakOrder": 0,
+            "FMLCorePluginContainsFMLMod": true,
+            "ForceLoadAsMod": true,
+            "Maven-Artifact": "${group}:${archivesBaseName}:${version}"
+    )
+}
 
 mixin {
     add sourceSets.main, "mixins.phosphor.refmap.json"
@@ -127,12 +127,16 @@ if (System.getenv("SIGN_BUILD") == 'true') {
 task sourcesJar(type: Jar, dependsOn: classes) {
     classifier = 'sources'
 
+    applyJarAttributes(manifest)
+
     from sourceSets.main.allSource
 }
 
 
 task deobfJar(type: Jar, dependsOn: classes) {
     classifier = 'deobf'
+
+    applyJarAttributes(manifest)
 
     from sourceSets.main.output
 }
