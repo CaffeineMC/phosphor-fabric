@@ -16,14 +16,13 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'maven-publish'
 
+group = "me.jellysquid.mods"
+
 if (System.getenv("BUILD_NUMBER") != null) {
     version = "${minecraft_version}-${mod_version}+build${System.getenv("BUILD_NUMBER")}"
 } else {
     version = "${minecraft_version}-${mod_version}-SNAPSHOT"
 }
-
-group = "me.jellysquid.mods"
-archivesBaseName = "${mod_name}"
 
 compileJava {
     sourceCompatibility = targetCompatibility = '1.8'
@@ -47,7 +46,6 @@ repositories {
 
 configurations {
     shade
-
     compile.extendsFrom shade
 }
 
@@ -57,10 +55,24 @@ dependencies {
     }
 }
 
-jar {
-    from sourceSets.main.output
+def applyBaseJarAttributes(manifest, classifier) {
+    manifest.mainAttributes(
+            "FMLAT": "phosphor_at.cfg",
+            "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin",
+            "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
+            "TweakOrder": 0,
+            "FMLCorePluginContainsFMLMod": true,
+            "ForceLoadAsMod": true,
+            "Maven-Artifact": "${group}:${name}:${version}:${classifier}"
+    )
+}
 
-    applyJarAttributes(manifest)
+jar {
+    classifier = 'universal'
+
+    applyBaseJarAttributes(manifest, classifier)
+
+    from sourceSets.main.output
 
     configurations.shade.each { dep ->
         from(project.zipTree(dep)) {
@@ -71,9 +83,24 @@ jar {
             exclude 'META-INF/*.MF'
         }
     }
-
-    classifier = 'universal'
 }
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+
+    applyBaseJarAttributes(manifest, classifier)
+
+    from sourceSets.main.allSource
+}
+
+task deobfJar(type: Jar, dependsOn: classes) {
+    classifier = 'dev'
+
+    applyBaseJarAttributes(manifest, classifier)
+
+    from sourceSets.main.output
+}
+
 
 processResources {
     inputs.property "version", project.version
@@ -90,56 +117,10 @@ processResources {
     }
 }
 
-def applyJarAttributes(manifest) {
-    manifest.mainAttributes(
-            "FMLAT": "phosphor_at.cfg",
-            "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin",
-            "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
-            "TweakOrder": 0,
-            "FMLCorePluginContainsFMLMod": true,
-            "ForceLoadAsMod": true,
-            "Maven-Artifact": "${group}:${archivesBaseName}:${version}"
-    )
-}
-
 mixin {
     add sourceSets.main, "mixins.phosphor.refmap.json"
 }
 
-minecraft {
-    makeObfSourceJar = true
-}
-
-task signJar(type: SignJar, dependsOn: reobfJar) {
-    keyStore = System.getenv('SIGN_KEYSTORE')
-    alias = System.getenv('SIGN_ALIAS')
-    storePass = System.getenv('SIGN_STORE_PASS')
-    keyPass = System.getenv('SIGN_KEY_PASS')
-
-    inputFile = jar.archivePath
-    outputFile = jar.archivePath
-}
-
-if (System.getenv("SIGN_BUILD") == 'true') {
-    build.dependsOn signJar
-}
-
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-
-    applyJarAttributes(manifest)
-
-    from sourceSets.main.allSource
-}
-
-
-task deobfJar(type: Jar, dependsOn: classes) {
-    classifier = 'deobf'
-
-    applyJarAttributes(manifest)
-
-    from sourceSets.main.output
-}
 
 publishing {
     publications {
@@ -169,6 +150,23 @@ publishing {
             }
         }
     }
+}
 
+if (System.getenv("JARSIGN_SECRETS_FILE") != null) {
+    def secretsFile = file(System.getenv("JARSIGN_SECRETS_FILE"))
 
+    def secrets = new Properties()
+    secrets.load(secretsFile.newReader())
+
+    [jar, sourcesJar, deobfJar].each { jar ->
+        jar.finalizedBy task(jar.name + 'Sign', type: SignJar) {
+            keyStore = System.getenv("JARSIGN_KEYSTORE_FILE")
+            alias = secrets.alias
+            storePass = secrets.storePassword
+            keyPass = secrets.keyPassword
+
+            inputFile = jar.archivePath
+            outputFile = jar.archivePath
+        }
+    }
 }
