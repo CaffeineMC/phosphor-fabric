@@ -15,12 +15,6 @@ pipeline {
             }
         }
 
-        stage('Setup') {
-            steps {
-                sh 'gradle setupCIWorkspace'
-            }
-        }
-
         stage('Build') {
             steps {
                 sh 'gradle build'
