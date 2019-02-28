@@ -57,18 +57,23 @@ dependencies {
 
 def commonManifest = {
     attributes "FMLAT": "phosphor_at.cfg"
+    attributes "Maven-Artifact": "${group}:${name}:${version}"
+}
+
+def coreModManifest = {
+    attributes "FMLAT": "phosphor_at.cfg"
+    attributes "Maven-Artifact": "${group}:${name}:${version}"
     attributes "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin"
     attributes "TweakClass": "org.spongepowered.asm.launch.MixinTweaker"
     attributes "TweakOrder": 0
     attributes "FMLCorePluginContainsFMLMod": true
     attributes "ForceLoadAsMod": true
-    attributes "Maven-Artifact": "${group}:${name}:${version}"
 }
 
 jar {
     classifier = 'universal'
 
-    manifest commonManifest
+    manifest coreModManifest
 
     from sourceSets.main.output
 
