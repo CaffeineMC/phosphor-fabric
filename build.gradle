@@ -25,7 +25,8 @@ if (System.getenv("BUILD_NUMBER") != null) {
 }
 
 compileJava {
-    sourceCompatibility = targetCompatibility = '1.8'
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
 }
 
 minecraft {
@@ -88,6 +89,9 @@ jar {
             exclude '**/*.html'
         }
     }
+
+
+    rename '(.+_at.cfg)', 'META-INF/$1'
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
@@ -183,3 +187,5 @@ if (System.getenv("JARSIGN_SECRETS_FILE") != null) {
         jarTask.finalizedBy task
     }
 }
+
+build.dependsOn deobfJar, sourcesJar
