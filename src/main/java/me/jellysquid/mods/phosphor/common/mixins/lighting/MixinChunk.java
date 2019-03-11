@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nullable;
 
-@Mixin(Chunk.class)
+@Mixin(value = Chunk.class, priority = 1)
 public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, ILightingEngineProvider {
     // === START OF SHADOWS ===
 
@@ -42,14 +42,6 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
 
     @Shadow
     private int heightMapMinimum;
-
-    @Shadow
-    @Final
-    public int x;
-
-    @Shadow
-    @Final
-    public int z;
 
     @Shadow
     @Final
@@ -244,9 +236,6 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
         }
     }
 
-    @Shadow
-    public abstract IBlockState getBlockState(int x, int y, int z);
-
     /**
      * Hook for calculating light updates only as needed. {@link MixinChunk#getCachedLightFor(EnumSkyBlock, BlockPos)} does not
      * call this hook.
@@ -260,14 +249,13 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
         return this.getCachedLightFor(type, pos);
     }
 
-    /**
-     * @author Angeline
-     */
-    @Overwrite
-    public void checkLight() {
+    @Inject(method = "checkLight()V", at = @At("HEAD"), cancellable = true)
+    private void checkLight(CallbackInfo ci) {
         this.isTerrainPopulated = true;
 
         LightingHooks.checkChunkLighting((Chunk) (Object) this, this.world);
+
+        ci.cancel();
     }
 
     @Override
@@ -286,75 +274,6 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
             return type == EnumSkyBlock.BLOCK ? extendedblockstorage.getBlockLight(i, j & 15, k) : type.defaultLightValue;
         }
     }
-
-    /**
-     * @author
-     */
-    @Overwrite
-    public void generateSkylightMap() {
-        int maxY = this.getTopFilledSegment();
-
-        this.heightMapMinimum = Integer.MAX_VALUE;
-
-        BlockPos.PooledMutableBlockPos pos = BlockPos.PooledMutableBlockPos.retain();
-
-        for (int x = 0; x < 16; ++x) {
-            for (int z = 0; z < 16; ++z) {
-                this.precipitationHeightMap[x + (z << 4)] = -999;
-
-                for (int y = maxY + 16; y > 0; --y) {
-                    if (this.getBlockState(x, y - 1, z).getLightOpacity() != 0) {
-                        this.heightMap[z << 4 | x] = y;
-
-                        if (y < this.heightMapMinimum) {
-                            this.heightMapMinimum = y;
-                        }
-
-                        break;
-                    }
-                }
-
-                if (this.world.provider.hasSkyLight()) {
-                    int light = 15;
-                    int y2 = maxY + 16 - 1;
-
-                    do {
-                        int opacity = this.getBlockState(x, y2, z).getLightOpacity();
-
-                        if (opacity == 0 && light != 15) {
-                            opacity = 1;
-                        }
-
-                        light -= opacity;
-
-                        if (light > 0) {
-                            ExtendedBlockStorage extendedblockstorage = this.storageArrays[y2 >> 4];
-
-                            if (extendedblockstorage != Chunk.NULL_BLOCK_STORAGE) {
-                                extendedblockstorage.setSkyLight(x, y2 & 15, z, light);
-
-                                if (this.world.isRemote) {
-                                    this.world.notifyLightSet(pos.setPos((this.x << 4) + x, y2, (this.z << 4) + z));
-                                }
-                            }
-                        }
-
-                        --y2;
-
-                    }
-                    while (y2 > 0 && light > 0);
-                }
-            }
-        }
-
-
-        pos.release();
-
-        this.dirty = true;
-    }
-
-    @Shadow
-    public abstract int getTopFilledSegment();
 
     // === END OF REPLACEMENTS ===
 

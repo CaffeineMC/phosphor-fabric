@@ -6,10 +6,10 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(World.class)
 public abstract class MixinWorld implements ILightingEngineProvider {
@@ -30,10 +30,10 @@ public abstract class MixinWorld implements ILightingEngineProvider {
      *
      * @author Angeline
      */
-    @Overwrite
-    public boolean checkLightFor(EnumSkyBlock type, BlockPos pos) {
+    @Inject(method = "checkLightFor", at = @At("HEAD"), cancellable = true)
+    private void checkLightFor(EnumSkyBlock type, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         this.lightingEngine.scheduleLightUpdate(type, pos);
 
-        return true;
+        cir.setReturnValue(true);
     }
 }

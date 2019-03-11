@@ -25,6 +25,10 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (targetClassName.startsWith("net.minecraft.client")) {
+            return false;
+        }
+
         return true;
     }
 
