@@ -6,12 +6,12 @@ import net.minecraft.world.chunk.Chunk;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(SPacketChunkData.class)
 public abstract class MixinSPacketChunkData {
-    @Inject(method = "<init>(Lnet/minecraft/world/chunk/Chunk;I)V", at = @At("HEAD"))
-    private void onConstructed(Chunk chunkIn, int changedSectionFilter, CallbackInfo ci) {
+    @Inject(method = "calculateChunkSize", at = @At("HEAD"))
+    private void onCalculateChunkSize(Chunk chunkIn, boolean p_189556_2_, int p_189556_3_, CallbackInfoReturnable<Integer> cir) {
         ((ILightingEngineProvider) chunkIn).getLightingEngine().procLightUpdates();
     }
 }
