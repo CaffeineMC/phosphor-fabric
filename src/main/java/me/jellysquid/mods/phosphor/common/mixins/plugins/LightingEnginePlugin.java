@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.common.mixins.plugins;
 
 import net.minecraft.launchwrapper.Launch;
 import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
@@ -25,13 +26,8 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (targetClassName.startsWith("net.minecraft.client")) {
-            // TODO: Is there a better way?
-            try {
-                Class.forName(targetClassName);
-            } catch (ClassNotFoundException e) {
-                return false;
-            }
+        if (targetClassName.startsWith("net.minecraft.client") && MixinEnvironment.getCurrentEnvironment().getSide() != MixinEnvironment.Side.CLIENT) {
+            return false;
         }
 
         return true;
