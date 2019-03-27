@@ -1,8 +1,6 @@
 package me.jellysquid.mods.phosphor.core;
 
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
-import org.spongepowered.asm.launch.MixinBootstrap;
-import org.spongepowered.asm.mixin.Mixins;
 
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -10,12 +8,6 @@ import java.util.Map;
 @SuppressWarnings("unused")
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 public class PhosphorFMLLoadingPlugin implements IFMLLoadingPlugin {
-    public PhosphorFMLLoadingPlugin() {
-        MixinBootstrap.init();
-
-        Mixins.addConfiguration("mixins.phosphor.json");
-    }
-
     @Override
     public String[] getASMTransformerClass() {
         return new String[0];
@@ -29,7 +21,7 @@ public class PhosphorFMLLoadingPlugin implements IFMLLoadingPlugin {
     @Nullable
     @Override
     public String getSetupClass() {
-        return null;
+        return PhosphorFMLSetupHook.class.getName();
     }
 
     @Override

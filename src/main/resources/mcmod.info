@@ -5,7 +5,7 @@
     "description": "Lighting engine performance optimizations and bug fixes for Minecraft. These improvements are based upon the work done by Mathe172 and PhiPro95. Without their work towards reverse engineering and diagnosing Minecraft's lighting performance crisis, this project would not have been possible.",
     "version": "${version}",
     "mcversion": "${mcversion}",
-    "url": "https://jellysquid.me",
+    "url": "https://minecraft.curseforge.com/projects/phosphor",
     "authorList": [
       "Angeline (@jellysquid)"
     ]
