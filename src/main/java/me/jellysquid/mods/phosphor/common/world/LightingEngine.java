@@ -4,6 +4,7 @@ import me.jellysquid.mods.phosphor.api.IChunkLighting;
 import me.jellysquid.mods.phosphor.api.ILightingEngine;
 import me.jellysquid.mods.phosphor.common.PhosphorMod;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.init.Blocks;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
@@ -12,6 +13,7 @@ import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -94,10 +96,8 @@ public class LightingEngine implements ILightingEngine {
 
     //Cached data about neighboring blocks (of tempPos)
     private boolean isNeighborDataValid = false;
-    private final Chunk[] neighborsChunk = new Chunk[6];
-    private final BlockPos.MutableBlockPos[] neighborsPos = new BlockPos.MutableBlockPos[6];
-    private final long[] neighborsLongPos = new long[6];
-    private final int[] neighborsLight = new int[6];
+
+    private final NeighborInfo[] neighborInfos = new NeighborInfo[6];
 
     public LightingEngine(final World world) {
         this.world = world;
@@ -115,8 +115,8 @@ public class LightingEngine implements ILightingEngine {
             this.queuedBrightenings[i] = new PooledLongQueue();
         }
 
-        for (int i = 0; i < this.neighborsPos.length; ++i) {
-            this.neighborsPos[i] = new BlockPos.MutableBlockPos();
+        for (int i = 0; i < this.neighborInfos.length; ++i) {
+            this.neighborInfos[i] = new NeighborInfo();
         }
     }
 
@@ -241,24 +241,24 @@ public class LightingEngine implements ILightingEngine {
 
                     this.fetchNeighborDataFromCur();
 
-                    for (int i = 0; i < 6; ++i) {
-                        final Chunk nChunk = this.neighborsChunk[i];
+                    for (NeighborInfo info : this.neighborInfos) {
+                        final Chunk nChunk = info.chunk;
 
                         if (nChunk == null) {
                             continue;
                         }
 
-                        final int nLight = this.neighborsLight[i];
+                        final int nLight = info.light;
 
                         if (nLight == 0) {
                             continue;
                         }
 
-                        final BlockPos.MutableBlockPos nPos = this.neighborsPos[i];
+                        final BlockPos.MutableBlockPos nPos = info.pos;
 
-                        if (curLight - this.posToOpac(nPos, posToState(nPos, nChunk)) >= nLight) //schedule neighbor for darkening if we possibly light it
+                        if (curLight - this.posToOpac(nPos, posToState(nPos, info.section)) >= nLight) //schedule neighbor for darkening if we possibly light it
                         {
-                            this.enqueueDarkening(nPos, this.neighborsLongPos[i], nLight, nChunk);
+                            this.enqueueDarkening(nPos, info.key, nLight, nChunk);
                         } else //only use for new light calculation if not
                         {
                             //if we can't darken the neighbor, no one else can (because of processing order) -> safe to let us be illuminated by it
@@ -308,22 +308,30 @@ public class LightingEngine implements ILightingEngine {
 
         this.isNeighborDataValid = true;
 
-        for (int i = 0; i < 6; ++i) {
-            final long nLongPos = this.neighborsLongPos[i] = this.curData + neighborShifts[i];
+        for (int i = 0; i < this.neighborInfos.length; ++i) {
+            NeighborInfo info = this.neighborInfos[i];
+
+            final long nLongPos = info.key = this.curData + neighborShifts[i];
 
             if ((nLongPos & yCheck) != 0) {
-                this.neighborsChunk[i] = null;
+                info.chunk = null;
+                info.section = null;
                 continue;
             }
 
-            final BlockPos.MutableBlockPos nPos = longToPos(this.neighborsPos[i], nLongPos);
+            final BlockPos.MutableBlockPos nPos = longToPos(info.pos, nLongPos);
 
-            final long nChunkIdentifier = nLongPos & mChunk;
+            final Chunk nChunk;
 
-            final Chunk nChunk = this.neighborsChunk[i] = nChunkIdentifier == this.curChunkIdentifier ? this.curChunk : this.posToChunk(nPos);
+            if ((nLongPos & mChunk) == this.curChunkIdentifier) {
+                nChunk = info.chunk = this.curChunk;
+            } else {
+                nChunk = info.chunk = this.posToChunk(nPos);
+            }
 
             if (nChunk != null) {
-                this.neighborsLight[i] = this.posToCachedLight(nPos, nChunk);
+                info.light = this.posToCachedLight(nPos, nChunk);
+                info.section = nChunk.getBlockStorageArray()[nPos.getY() >> 4];
             }
         }
     }
@@ -343,12 +351,12 @@ public class LightingEngine implements ILightingEngine {
         int newLight = luminosity;
         this.fetchNeighborDataFromCur();
 
-        for (int i = 0; i < 6; ++i) {
-            if (this.neighborsChunk[i] == null) {
+        for (NeighborInfo info : this.neighborInfos) {
+            if (info.chunk == null) {
                 continue;
             }
 
-            final int nLight = this.neighborsLight[i];
+            final int nLight = info.light;
 
             newLight = Math.max(nLight - opacity, newLight);
         }
@@ -359,19 +367,17 @@ public class LightingEngine implements ILightingEngine {
     private void spreadLightFromCur(final int curLight) {
         this.fetchNeighborDataFromCur();
 
-        for (int i = 0; i < 6; ++i) {
-            final BlockPos.MutableBlockPos nPos = this.neighborsPos[i];
-
-            final Chunk nChunk = this.neighborsChunk[i];
+        for (NeighborInfo info : this.neighborInfos) {
+            final Chunk nChunk = info.chunk;
 
             if (nChunk == null) {
                 continue;
             }
 
-            final int newLight = curLight - this.posToOpac(nPos, nChunk.getBlockState(nPos));
+            final int newLight = curLight - this.posToOpac(info.pos, posToState(info.pos, info.section));
 
-            if (newLight > this.neighborsLight[i]) {
-                this.enqueueBrightening(nPos, this.neighborsLongPos[i], newLight, nChunk);
+            if (newLight > info.light) {
+                this.enqueueBrightening(info.pos, info.key, newLight, nChunk);
             }
         }
     }
@@ -466,8 +472,32 @@ public class LightingEngine implements ILightingEngine {
         return posToState(this.curPos, this.curChunk);
     }
 
+    private static final IBlockState DEFAULT_BLOCK_STATE = Blocks.AIR.getDefaultState();
+
+    // Avoids some additional logic in Chunk#getBlockState... 0 is always air
     private static IBlockState posToState(final BlockPos pos, final Chunk chunk) {
-        return chunk.getBlockState(pos.getX(), pos.getY(), pos.getZ());
+        return posToState(pos, chunk.getBlockStorageArray()[pos.getY() >> 4]);
+    }
+
+    private static IBlockState posToState(final BlockPos pos, final ExtendedBlockStorage section) {
+        final int x = pos.getX();
+        final int y = pos.getY();
+        final int z = pos.getZ();
+
+        if (section != Chunk.NULL_BLOCK_STORAGE)
+        {
+            int i = section.data.storage.getAt((y & 15) << 8 | (z & 15) << 4 | x & 15);
+
+            if (i != 0) {
+                IBlockState state = section.data.palette.getBlockState(i);
+
+                if (state != null) {
+                    return state;
+                }
+            }
+        }
+
+        return DEFAULT_BLOCK_STATE;
     }
 
     private Chunk posToChunk(final BlockPos pos) {
@@ -556,6 +586,17 @@ public class LightingEngine implements ILightingEngine {
 
             return ret;
         }
+    }
+
+    private static class NeighborInfo {
+        Chunk chunk;
+        ExtendedBlockStorage section;
+
+        int light;
+
+        long key;
+
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
     }
 }
 
