@@ -5,10 +5,12 @@ import me.jellysquid.mods.phosphor.api.IChunkLightingData;
 import me.jellysquid.mods.phosphor.api.ILightingEngine;
 import me.jellysquid.mods.phosphor.api.ILightingEngineProvider;
 import me.jellysquid.mods.phosphor.common.world.LightingHooks;
+import me.jellysquid.mods.phosphor.common.world.WorldChunkSlice;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
@@ -53,6 +55,18 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
 
     @Shadow
     private boolean isTerrainPopulated;
+
+    @Shadow
+    private boolean[] updateSkylightColumns;
+
+    @Shadow
+    private int x;
+
+    @Shadow
+    private int z;
+
+    @Shadow
+    private boolean isGapLightingUpdated;
 
     @Shadow
     public abstract TileEntity shadow$getTileEntity(BlockPos pos, Chunk.EnumCreateEntityType type);
@@ -274,6 +288,117 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
             return type == EnumSkyBlock.BLOCK ? extendedblockstorage.getBlockLight(i, j & 15, k) : type.defaultLightValue;
         }
     }
+
+    private static final EnumFacing[] HORIZONTAL = EnumFacing.Plane.HORIZONTAL.facings();
+
+    /**
+     * Optimized version of recheckGaps. Avoids chunk lookups as much as possible.
+     */
+    @Overwrite
+    private void recheckGaps(boolean onlyOne) {
+        this.world.profiler.startSection("recheckGaps");
+
+        WorldChunkSlice slice = new WorldChunkSlice(this.world, this.x, this.z);
+
+        if (this.world.isAreaLoaded(new BlockPos(this.x * 16 + 8, 0, this.z * 16 + 8), 16)) {
+            for (int x = 0; x < 16; ++x) {
+                for (int z = 0; z < 16; ++z) {
+                    if (this.recheckGapsForColumn(slice, x, z)) {
+                        if (onlyOne) {
+                            this.world.profiler.endSection();
+
+                            return;
+                        }
+                    }
+                }
+            }
+
+            this.isGapLightingUpdated = false;
+        }
+
+        this.world.profiler.endSection();
+    }
+
+    private boolean recheckGapsForColumn(WorldChunkSlice slice, int x, int z) {
+        int i = x + z * 16;
+
+        if (this.updateSkylightColumns[i]) {
+            this.updateSkylightColumns[i] = false;
+
+            int height = this.getHeightValue(x, z);
+
+            int x1 = this.x * 16 + x;
+            int z1 = this.z * 16 + z;
+
+            int max = this.recheckGapsGetLowestHeight(slice, x1, z1);
+
+            this.recheckGapsSkylightNeighborHeight(slice, x1, z1, height, max);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private int recheckGapsGetLowestHeight(WorldChunkSlice slice, int x, int z) {
+        int max = Integer.MAX_VALUE;
+
+        for (EnumFacing facing : HORIZONTAL) {
+            int j = x + facing.getXOffset();
+            int k = z + facing.getZOffset();
+
+            max = Math.min(max, slice.getChunkFromWorldCoords(j, k).getLowestHeight());
+        }
+
+        return max;
+    }
+
+    private void recheckGapsSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int height, int max) {
+        this.checkSkylightNeighborHeight(slice, x, z, max);
+
+        for (EnumFacing facing : HORIZONTAL) {
+            int j = x + facing.getXOffset();
+            int k = z + facing.getZOffset();
+
+            this.checkSkylightNeighborHeight(slice, j, k, height);
+        }
+    }
+
+    private void checkSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int maxValue)
+    {
+        int i = slice.getChunkFromWorldCoords(x, z).getHeightValue(x & 15, z & 15);
+
+        if (i > maxValue)
+        {
+            this.updateSkylightNeighborHeight(slice, x, z, maxValue, i + 1);
+        }
+        else if (i < maxValue)
+        {
+            this.updateSkylightNeighborHeight(slice, x, z, i, maxValue + 1);
+        }
+    }
+
+    private void updateSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int startY, int endY)
+    {
+        if (endY > startY)
+        {
+            if (!slice.isLoaded(x, z, 16))
+            {
+                return;
+            }
+
+            for (int i = startY; i < endY; ++i)
+            {
+                this.world.checkLightFor(EnumSkyBlock.SKY, new BlockPos(x, i, z));
+            }
+
+            this.dirty = true;
+        }
+    }
+
+    @Shadow
+    protected abstract int getHeightValue(int i, int j);
+
 
     // === END OF REPLACEMENTS ===
 
