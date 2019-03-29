@@ -24,14 +24,14 @@ public abstract class MixinChunkProviderServer {
 
     @Inject(method = "saveChunks", at = @At("HEAD"))
     private void onSaveChunks(boolean all, CallbackInfoReturnable<Boolean> cir) {
-        ((ILightingEngineProvider) this.world).getLightingEngine().procLightUpdates();
+        ((ILightingEngineProvider) this.world).getLightingEngine().processLightUpdates();
     }
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTick(CallbackInfoReturnable<Boolean> cir) {
         if (!this.world.disableLevelSaving) {
             if (!this.droppedChunks.isEmpty()) {
-                ((ILightingEngineProvider) this.world).getLightingEngine().procLightUpdates();
+                ((ILightingEngineProvider) this.world).getLightingEngine().processLightUpdates();
             }
         }
     }

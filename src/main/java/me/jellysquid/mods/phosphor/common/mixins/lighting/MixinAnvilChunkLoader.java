@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MixinAnvilChunkLoader {
     @Inject(method = "saveChunk", at = @At("HEAD"))
     private void onConstructed(World world, Chunk chunkIn, CallbackInfo callbackInfo) {
-        ((ILightingEngineProvider) world).getLightingEngine().procLightUpdates();
+        ((ILightingEngineProvider) world).getLightingEngine().processLightUpdates();
     }
 
     @Inject(method = "readChunkFromNBT", at = @At("RETURN"))

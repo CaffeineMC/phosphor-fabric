@@ -12,6 +12,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MixinSPacketChunkData {
     @Inject(method = "calculateChunkSize", at = @At("HEAD"))
     private void onCalculateChunkSize(Chunk chunkIn, boolean p_189556_2_, int p_189556_3_, CallbackInfoReturnable<Integer> cir) {
-        ((ILightingEngineProvider) chunkIn).getLightingEngine().procLightUpdates();
+        ((ILightingEngineProvider) chunkIn).getLightingEngine().processLightUpdates();
     }
 }

@@ -24,7 +24,7 @@ public abstract class MixinMinecraft {
     private void onRunTick(CallbackInfo ci) {
         this.profiler.endStartSection("lighting");
 
-        ((ILightingEngineProvider) this.world).getLightingEngine().procLightUpdates();
+        ((ILightingEngineProvider) this.world).getLightingEngine().processLightUpdates();
     }
 
 }
