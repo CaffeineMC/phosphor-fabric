@@ -33,6 +33,16 @@ public class PhosphorConfig {
     }
 
     private void saveConfig() {
+        File dir = getConfigDirectory();
+
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                throw new RuntimeException("Could not create configuration directory at '" + dir.getAbsolutePath() + "'");
+            }
+        } else if (!dir.isDirectory()) {
+            throw new RuntimeException("Configuration directory at '" + dir.getAbsolutePath() + "' is not a directory");
+        }
+
         try (Writer writer = new FileWriter(getConfigFile())) {
             gson.toJson(this, writer);
         } catch (IOException e) {
@@ -40,8 +50,12 @@ public class PhosphorConfig {
         }
     }
 
+    private static File getConfigDirectory() {
+        return new File("config");
+    }
+
     private static File getConfigFile() {
-        return new File("config/phosphor.json");
+        return new File(getConfigDirectory(), "phosphor.json");
     }
 
     private static Gson createGson() {

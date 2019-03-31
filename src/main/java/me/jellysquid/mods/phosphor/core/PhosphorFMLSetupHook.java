@@ -26,7 +26,7 @@ public class PhosphorFMLSetupHook implements IFMLCallHook {
 
         PhosphorConfig config = PhosphorConfig.loadConfig();
 
-        if (config.enablePhosphor) {
+        if (!config.enablePhosphor) {
             logger.info("Phosphor has been disabled through configuration, terminating setup hook");
 
             return null;
