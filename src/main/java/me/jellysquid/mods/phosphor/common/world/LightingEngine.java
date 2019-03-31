@@ -4,6 +4,7 @@ import me.jellysquid.mods.phosphor.api.IChunkLighting;
 import me.jellysquid.mods.phosphor.api.ILightingEngine;
 import me.jellysquid.mods.phosphor.common.PhosphorMod;
 import me.jellysquid.mods.phosphor.common.util.PooledLongQueue;
+import me.jellysquid.mods.phosphor.common.util.ThreadUtil;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.util.EnumFacing;
@@ -18,12 +19,16 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 public class LightingEngine implements ILightingEngine {
     private static final int MAX_SCHEDULED_COUNT = 1 << 22;
 
     private static final int MAX_LIGHT = 15;
 
     private static final Logger logger = LogManager.getLogger();
+
+    private final Thread ownedThread = Thread.currentThread();
 
     private final World world;
 
@@ -94,6 +99,8 @@ public class LightingEngine implements ILightingEngine {
     private final NeighborInfo[] neighborInfos = new NeighborInfo[6];
     private PooledLongQueue.LongQueueIterator queueIt;
 
+    private final ReentrantLock lock = new ReentrantLock();
+
     public LightingEngine(final World world) {
         this.world = world;
         this.profiler = world.profiler;
@@ -125,7 +132,13 @@ public class LightingEngine implements ILightingEngine {
      */
     @Override
     public void scheduleLightUpdate(final EnumSkyBlock lightType, final BlockPos pos) {
-        this.scheduleLightUpdate(lightType, encodeWorldCoord(pos));
+        this.acquireLock();
+
+        try {
+            this.scheduleLightUpdate(lightType, encodeWorldCoord(pos));
+        } finally {
+            this.releaseLock();
+        }
     }
 
     /**
@@ -156,14 +169,36 @@ public class LightingEngine implements ILightingEngine {
      */
     @Override
     public void processLightUpdatesForType(final EnumSkyBlock lightType) {
-        final PooledLongQueue queue = this.queuedLightUpdates[lightType.ordinal()];
-
-        if (queue.isEmpty()) {
+        //renderer accesses world unsynchronized, don't modify anything in that case
+        if (this.world.isRemote && !PhosphorMod.PROXY.getMinecraftThread().isCallingFromMinecraftThread()) {
             return;
         }
 
-        //renderer accesses world unsynchronized, don't modify anything in that case
-        if (this.world.isRemote && !PhosphorMod.PROXY.getMinecraftThread().isCallingFromMinecraftThread()) {
+        this.acquireLock();
+
+        try {
+            this.processLightUpdatesForTypeInner(lightType);
+        } finally {
+            this.releaseLock();
+        }
+    }
+
+    private void acquireLock() {
+        if (!this.lock.tryLock()) {
+            ThreadUtil.validateThread(this.ownedThread);
+
+            this.lock.lock();
+        }
+    }
+
+    private void releaseLock() {
+        this.lock.unlock();
+    }
+
+    private void processLightUpdatesForTypeInner(final EnumSkyBlock lightType) {
+        final PooledLongQueue queue = this.queuedLightUpdates[lightType.ordinal()];
+
+        if (queue.isEmpty()) {
             return;
         }
 

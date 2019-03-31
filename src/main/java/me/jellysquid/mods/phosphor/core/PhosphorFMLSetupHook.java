@@ -1,5 +1,7 @@
 package me.jellysquid.mods.phosphor.core;
 
+import me.jellysquid.mods.phosphor.common.config.PhosphorConfig;
+import me.jellysquid.mods.phosphor.common.util.ThreadUtil;
 import net.minecraftforge.fml.relauncher.IFMLCallHook;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,6 +21,20 @@ public class PhosphorFMLSetupHook implements IFMLCallHook {
     @Override
     public Void call() {
         logger.info("Phosphor has been hooked, starting initialization");
+
+        logger.info("Loading configuration");
+
+        PhosphorConfig config = PhosphorConfig.loadConfig();
+
+        if (config.enablePhosphor) {
+            logger.info("Phosphor has been disabled through configuration, terminating setup hook");
+
+            return null;
+        }
+
+        ThreadUtil.VALIDATE_THREAD_ACCESS = config.enableIllegalThreadAccessWarnings;
+
+        logger.info("Loading Mixin framework");
 
         MixinBootstrap.init();
 
