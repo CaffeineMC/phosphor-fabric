@@ -20,6 +20,11 @@ public abstract class MixinMinecraft {
     @Shadow
     public WorldClient world;
 
+    /**
+     * @author Angeline
+     * Forces the client to process light updates before rendering the world. We inject before the call to the profiler
+     * which designates the start of world rendering. This is a rather injection site.
+     */
     @Inject(method = "runTick", at = @At(value = "CONSTANT", args = "stringValue=levelRenderer", shift = At.Shift.BY, by = -3))
     private void onRunTick(CallbackInfo ci) {
         this.profiler.endStartSection("lighting");

@@ -1,4 +1,4 @@
-package me.jellysquid.mods.phosphor.common.world;
+package me.jellysquid.mods.phosphor.common.world.lighting;
 
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Blocks;

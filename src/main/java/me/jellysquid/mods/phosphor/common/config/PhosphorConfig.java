@@ -10,10 +10,10 @@ public class PhosphorConfig {
     private static final Gson gson = createGson();
 
     @SerializedName("enable_illegal_thread_access_warnings")
-    public boolean enableIllegalThreadAccessWarnings = true;
+    public final boolean enableIllegalThreadAccessWarnings = true;
 
     @SerializedName("enable_phosphor")
-    public boolean enablePhosphor = true;
+    public final boolean enablePhosphor = true;
 
     public static PhosphorConfig loadConfig() {
         File file = getConfigFile();

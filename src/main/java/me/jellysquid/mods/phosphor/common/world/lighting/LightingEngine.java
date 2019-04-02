@@ -1,4 +1,4 @@
-package me.jellysquid.mods.phosphor.common.world;
+package me.jellysquid.mods.phosphor.common.world.lighting;
 
 import me.jellysquid.mods.phosphor.api.IChunkLighting;
 import me.jellysquid.mods.phosphor.api.ILightingEngine;
@@ -169,7 +169,7 @@ public class LightingEngine implements ILightingEngine {
      */
     @Override
     public void processLightUpdatesForType(final EnumSkyBlock lightType) {
-        //renderer accesses world unsynchronized, don't modify anything in that case
+        //renderer accesses world un-synchronized, don't modify anything in that case
         if (this.world.isRemote && !PhosphorMod.PROXY.getMinecraftThread().isCallingFromMinecraftThread()) {
             return;
         }
@@ -185,8 +185,12 @@ public class LightingEngine implements ILightingEngine {
 
     private void acquireLock() {
         if (!this.lock.tryLock()) {
+            // If we cannot lock, something has gone wrong... Only one thread should ever acquire the lock.
+            // Validate that we're on the right thread immediately so we can gather information.
+            // It is NEVER valid to call World methods from a thread other than the owning thread of the world instance.
             ThreadUtil.validateThread(this.ownedThread);
 
+            // Wait for the lock to be released. This will likely introduce unwanted stalls.
             this.lock.lock();
         }
     }
@@ -545,7 +549,7 @@ public class LightingEngine implements ILightingEngine {
 
         long key;
 
-        MutableBlockPos pos = new MutableBlockPos();
+        final MutableBlockPos pos = new MutableBlockPos();
     }
 }
 

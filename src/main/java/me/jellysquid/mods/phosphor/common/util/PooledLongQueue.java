@@ -47,7 +47,7 @@ public class PooledLongQueue {
         return new LongQueueIterator(this.cur);
     }
 
-    public void clear() {
+    private void clear() {
         PooledLongQueueSegment segment = this.cur;
 
         while (segment != null) {
@@ -124,7 +124,7 @@ public class PooledLongQueue {
         private final long[] longArray = new long[QUEUE_SEGMENT_SIZE];
         private int index = 0;
         private PooledLongQueueSegment next;
-        private LongQueueSegmentPool pool;
+        private final LongQueueSegmentPool pool;
 
         private PooledLongQueueSegment(LongQueueSegmentPool pool) {
             this.pool = pool;

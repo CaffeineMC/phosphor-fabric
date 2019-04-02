@@ -22,11 +22,22 @@ public abstract class MixinChunkProviderServer {
     @Final
     private Set<Long> droppedChunks;
 
+    /**
+     * Injects a callback into the start of saveChunks(boolean) to force all light updates to be processed before saving.
+     *
+     * @author Angeline
+     */
     @Inject(method = "saveChunks", at = @At("HEAD"))
     private void onSaveChunks(boolean all, CallbackInfoReturnable<Boolean> cir) {
         ((ILightingEngineProvider) this.world).getLightingEngine().processLightUpdates();
     }
 
+    /**
+     * Injects a callback into the start of the onTick() method to process all pending light updates. This is not necessarily
+     * required, but we don't want our work queues getting too large.
+     *
+     * @author Angeline
+     */
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTick(CallbackInfoReturnable<Boolean> cir) {
         if (!this.world.disableLevelSaving) {

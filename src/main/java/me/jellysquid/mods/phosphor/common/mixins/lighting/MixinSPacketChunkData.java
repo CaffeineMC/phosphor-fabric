@@ -10,8 +10,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(SPacketChunkData.class)
 public abstract class MixinSPacketChunkData {
+    /**
+     * @author Angeline
+     * Injects a callback into SPacketChunkData#calculateChunkSize(Chunk, booolean, int) to force light updates to be
+     * processed before creating the client payload. We use this method rather than the constructor as it is not valid
+     * to inject elsewhere other than the RETURN of a ctor, which is too late for our needs.
+     */
     @Inject(method = "calculateChunkSize", at = @At("HEAD"))
-    private void onCalculateChunkSize(Chunk chunkIn, boolean p_189556_2_, int p_189556_3_, CallbackInfoReturnable<Integer> cir) {
+    private void onCalculateChunkSize(Chunk chunkIn, boolean hasSkyLight, int changedSectionFilter, CallbackInfoReturnable<Integer> cir) {
         ((ILightingEngineProvider) chunkIn).getLightingEngine().processLightUpdates();
     }
 }

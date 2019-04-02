@@ -1,4 +1,4 @@
-package me.jellysquid.mods.phosphor.common.world;
+package me.jellysquid.mods.phosphor.common.world.lighting;
 
 import me.jellysquid.mods.phosphor.api.IChunkLighting;
 import me.jellysquid.mods.phosphor.api.IChunkLightingData;

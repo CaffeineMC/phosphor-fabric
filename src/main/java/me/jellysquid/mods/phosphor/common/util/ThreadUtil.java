@@ -5,6 +5,15 @@ import me.jellysquid.mods.phosphor.common.PhosphorMod;
 public final class ThreadUtil {
     public static boolean VALIDATE_THREAD_ACCESS = true;
 
+    /**
+     * Checks whether or not the current thread matches the {@param expected} thread. A warning will be logged
+     * if the current thread does not match {@param expected} and {@link ThreadUtil#VALIDATE_THREAD_ACCESS} is true.
+     * <p>
+     * This method can be slow, and should only be used as a debugging tool when we suspect invalid thread accesses are
+     * happening.
+     *
+     * @param expected The expected thread to be accessing this method.
+     */
     public static void validateThread(Thread expected) {
         if (!VALIDATE_THREAD_ACCESS) {
             return;
