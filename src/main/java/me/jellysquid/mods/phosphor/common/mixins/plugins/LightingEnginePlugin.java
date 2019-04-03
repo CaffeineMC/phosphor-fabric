@@ -17,6 +17,8 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
     private PhosphorConfig config;
 
+    private boolean spongePresent;
+
     @Override
     public void onLoad(String mixinPackage) {
         logger.info("Loading configuration");
@@ -25,6 +27,18 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
         if (!this.config.enablePhosphor) {
             logger.info("Phosphor has been disabled through configuration!");
+        }
+
+        try {
+            Class.forName("org.spongepowered.mod.SpongeCoremod");
+
+            this.spongePresent = true;
+        } catch (Exception e) {
+            this.spongePresent = false;
+        }
+
+        if (this.spongePresent) {
+            logger.info("Sponge has been detected on the classpath! Sponge mixins will be used.");
         }
     }
 
@@ -41,6 +55,16 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (!this.config.enablePhosphor) {
             return false;
+        }
+
+        if (this.spongePresent) {
+            if (mixinClassName.endsWith("$Vanilla")) {
+                return false;
+            }
+        } else {
+            if (mixinClassName.endsWith("$Sponge")) {
+                return false;
+            }
         }
 
         // Do not apply client transformations if we are not in a client environment!

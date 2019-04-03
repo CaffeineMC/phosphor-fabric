@@ -6,6 +6,8 @@
   "mixins": [
     "MixinAnvilChunkLoader",
     "MixinChunk",
+    "MixinChunk$Sponge",
+    "MixinChunk$Vanilla",
     "MixinChunkProviderServer",
     "MixinMinecraft",
     "MixinSPacketChunkData",

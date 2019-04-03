@@ -6,7 +6,6 @@ import me.jellysquid.mods.phosphor.api.ILightingEngine;
 import me.jellysquid.mods.phosphor.api.ILightingEngineProvider;
 import me.jellysquid.mods.phosphor.common.world.WorldChunkSlice;
 import me.jellysquid.mods.phosphor.common.world.lighting.LightingHooks;
-import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -24,8 +23,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
+@SuppressWarnings("UnnecessaryQualifiedMemberReference")
 @Mixin(value = Chunk.class)
 public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, ILightingEngineProvider {
     private static final EnumFacing[] HORIZONTAL = EnumFacing.Plane.HORIZONTAL.facings();
@@ -116,6 +115,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
 
     /**
      * Replaces the call in setLightFor(Chunk, EnumSkyBlock, BlockPos) with our hook.
+     *
      * @author Angeline
      */
     @Redirect(
@@ -124,115 +124,10 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/chunk/Chunk;generateSkylightMap()V"
             ),
-            require = 1
+            expect = 0
     )
     private void setLightForRedirectGenerateSkylightMap(Chunk chunk, EnumSkyBlock type, BlockPos pos, int value) {
         LightingHooks.initSkylightForSection(this.world, (Chunk) (Object) this, this.storageArrays[pos.getY() >> 4]);
-    }
-
-    /**
-     * Redirects the construction of the ExtendedBlockStorage in setBlockState(BlockPos, IBlockState). We need to initialize
-     * the skylight data for the constructed section as soon as possible.
-     * @author Angeline
-     */
-    @Redirect(
-            method = "setBlockState",
-            at = @At(
-                    value = "NEW",
-                    args = "class=net/minecraft/world/chunk/storage/ExtendedBlockStorage"
-            ),
-            require = 1
-    )
-    private ExtendedBlockStorage setBlockStateCreateSection(int y, boolean storeSkylight) {
-        ExtendedBlockStorage storage = new ExtendedBlockStorage(y, storeSkylight);
-
-        LightingHooks.initSkylightForSection(this.world, (Chunk) (Object) this, storage);
-
-        return storage;
-    }
-
-    /**
-     * Nullifies the call to generate the skylight map. We don't actually do any work here yet as we can't capture locals
-     * with redirects... yet.
-     *
-     * @author Angeline
-     */
-    @Redirect(
-            method = "setBlockState",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/chunk/Chunk;generateSkylightMap()V"
-            ),
-            require = 1
-    )
-    private void setBlockStateVoidGenerateSkylightMap(Chunk chunk) {
-        // NO-OP
-        // We inject setBlockStateInjectGenerateSkylightMap after this
-    }
-
-    /**
-     * Injects into the success branch of setBlockState(BlockPos, IBlockState) after the nullified generateSkylightMap() call.
-     * @author Angeline
-     */
-    @Inject(
-            method = "setBlockState",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/chunk/Chunk;generateSkylightMap()V"
-            ),
-            locals = LocalCapture.CAPTURE_FAILHARD,
-            require = 1
-    )
-    private void setBlockStateInjectGenerateSkylightMap(BlockPos pos, IBlockState state, CallbackInfoReturnable<IBlockState> cir, int i, int j, int k,
-                                                        int l, int i1, IBlockState iblockstate, Block block, Block block1, int k1,
-                                                        ExtendedBlockStorage extendedblockstorage, boolean flag) {
-        int j1 = state.getLightOpacity(this.world, pos);
-
-        if (j1 > 0) {
-            if (j >= i1) {
-                this.relightBlock(i, j + 1, k);
-            }
-        } else if (j == i1 - 1) {
-            this.relightBlock(i, j, k);
-        }
-    }
-
-    /**
-     * Redirects the getLightFor function in the else branch of setBlockState(BlockPos, IBlockState) to always return
-     * Integer.MAX_VALUE. This causes the if statement to never evaluate to true and effectively nullifies the call.
-     */
-    @Redirect(
-            method = "setBlockState",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/chunk/Chunk;getLightFor(Lnet/minecraft/world/EnumSkyBlock;Lnet/minecraft/util/math/BlockPos;)I"
-            ),
-            require = 1
-    )
-    private int setBlockStateVoidGetLightFor(Chunk chunk, EnumSkyBlock type, BlockPos pos) {
-        // Always return -1 so we hit the conditional which calls propogateSkylightOcclusion... this will then run into the NO-OP below
-        return Integer.MAX_VALUE;
-    }
-
-
-    /**
-     * Redirects the propagateSkylightOcclusion call we were trying to avoid with the
-     * {@link MixinChunk#setBlockStateVoidGetLightFor} hack. If for some reason the statement
-     * still evaluates and the method is called, nothing will happen. This is a fail-safe if the aforementioned hack does not work.
-     * We do NOT want to spend time in getLightFor methods in the conditional if we can avoid it.
-     * @author Angeline
-     */
-    @Redirect(
-            method = "setBlockState",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/chunk/Chunk;propagateSkylightOcclusion(II)V"
-            ),
-            require = 1
-    )
-    private void setBlockStateVoidPropagateSkylightOcclusion(Chunk chunk, int x, int z) {
-        // NO-OP!
-        // We don't want to do any work here.
     }
 
     /**
@@ -270,6 +165,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
     /**
      * Hook for calculating light updates only as needed. {@link MixinChunk#getCachedLightFor(EnumSkyBlock, BlockPos)} does not
      * call this hook.
+     *
      * @author Angeline
      */
     @Inject(method = "getLightFor(Lnet/minecraft/world/EnumSkyBlock;Lnet/minecraft/util/math/BlockPos;)I", at = @At("HEAD"), cancellable = true)
@@ -283,6 +179,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
 
     /**
      * Hooks into checkLight() to check chunk lighting and returns immediately after, voiding the rest of the function.
+     *
      * @author Angeline
      */
     @Inject(method = "checkLight()V", at = @At("HEAD"), cancellable = true)
@@ -296,6 +193,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
 
     /**
      * Optimized version of recheckGaps. Avoids chunk fetches as much as possible.
+     *
      * @author Angeline
      */
     @Overwrite
@@ -368,31 +266,23 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
         }
     }
 
-    private void checkSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int maxValue)
-    {
+    private void checkSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int maxValue) {
         int i = slice.getChunkFromWorldCoords(x, z).getHeightValue(x & 15, z & 15);
 
-        if (i > maxValue)
-        {
+        if (i > maxValue) {
             this.updateSkylightNeighborHeight(slice, x, z, maxValue, i + 1);
-        }
-        else if (i < maxValue)
-        {
+        } else if (i < maxValue) {
             this.updateSkylightNeighborHeight(slice, x, z, i, maxValue + 1);
         }
     }
 
-    private void updateSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int startY, int endY)
-    {
-        if (endY > startY)
-        {
-            if (!slice.isLoaded(x, z, 16))
-            {
+    private void updateSkylightNeighborHeight(WorldChunkSlice slice, int x, int z, int startY, int endY) {
+        if (endY > startY) {
+            if (!slice.isLoaded(x, z, 16)) {
                 return;
             }
 
-            for (int i = startY; i < endY; ++i)
-            {
+            for (int i = startY; i < endY; ++i) {
                 this.world.checkLightFor(EnumSkyBlock.SKY, new BlockPos(x, i, z));
             }
 
