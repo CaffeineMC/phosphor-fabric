@@ -1,6 +1,9 @@
 package me.jellysquid.mods.phosphor.common.mixins.plugins;
 
+import me.jellysquid.mods.phosphor.common.config.PhosphorConfig;
 import net.minecraft.launchwrapper.Launch;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -10,9 +13,19 @@ import java.util.List;
 import java.util.Set;
 
 public class LightingEnginePlugin implements IMixinConfigPlugin {
+    private static final Logger logger = LogManager.getLogger("Phosphor Plugin");
+
+    private PhosphorConfig config;
+
     @Override
     public void onLoad(String mixinPackage) {
+        logger.info("Loading configuration");
 
+        this.config = PhosphorConfig.loadConfig();
+
+        if (!this.config.enablePhosphor) {
+            logger.info("Phosphor has been disabled through configuration!");
+        }
     }
 
     @Override
@@ -26,6 +39,10 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (!this.config.enablePhosphor) {
+            return false;
+        }
+
         // Do not apply client transformations if we are not in a client environment!
         return !targetClassName.startsWith("net.minecraft.client") || MixinEnvironment.getCurrentEnvironment().getSide() == MixinEnvironment.Side.CLIENT;
     }

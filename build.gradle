@@ -56,11 +56,6 @@ dependencies {
     }
 }
 
-def commonManifest = {
-    attributes "FMLAT": "phosphor_at.cfg"
-    attributes "Maven-Artifact": "${group}:${name}:${version}"
-}
-
 def coreModManifest = {
     attributes "FMLAT": "phosphor_at.cfg"
     attributes "Maven-Artifact": "${group}:${name}:${version}"
