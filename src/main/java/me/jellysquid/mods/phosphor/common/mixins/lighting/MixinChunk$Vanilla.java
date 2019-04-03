@@ -1,12 +1,9 @@
 package me.jellysquid.mods.phosphor.common.mixins.lighting;
 
 import me.jellysquid.mods.phosphor.common.world.lighting.LightingHooks;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
-import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -14,9 +11,8 @@ import org.spongepowered.asm.mixin.injection.*;
 
 @Mixin(value = Chunk.class)
 public abstract class MixinChunk$Vanilla {
-    private static final String SET_BLOCK_STATE_VANILLA = "Lnet/minecraft/world/chunk/Chunk;setBlockState" +
-            "(Lnet/minecraft/util/math/BlockPos;" +
-            "Lnet/minecraft/block/state/IBlockState;)" +
+    private static final String SET_BLOCK_STATE_VANILLA = "setBlockState" +
+            "(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/state/IBlockState;)" +
             "Lnet/minecraft/block/state/IBlockState;";
 
     @Shadow
@@ -51,7 +47,7 @@ public abstract class MixinChunk$Vanilla {
     }
 
     /**
-     * Modifies the flag variable of setBlockState(BlockPos, IBlockState) before conditionals.
+     * Modifies the flag variable of setBlockState(BlockPos, IBlockState) to always be false after it is set.
      *
      * @author Angeline
      */
@@ -59,20 +55,20 @@ public abstract class MixinChunk$Vanilla {
     @ModifyVariable(
             method = SET_BLOCK_STATE_VANILLA,
             at = @At(
-                    value = "JUMP",
-                    opcode = Opcodes.IFEQ
+                    value = "STORE",
+                    ordinal = 1
             ),
             index = 13,
             name = "flag",
             slice = @Slice(
                     from = @At(
-                            value = "INVOKE",
-                            target = "Lnet/minecraft/block/state/IBlockState;getBlock()Lnet/minecraft/block/Block;",
-                            ordinal = 2
+                            value = "FIELD",
+                            target = "Lnet/minecraft/world/chunk/Chunk;storageArrays:[Lnet/minecraft/world/chunk/storage/ExtendedBlockStorage;",
+                            ordinal = 1
                     ),
                     to = @At(
                             value = "INVOKE",
-                            target = "Lnet/minecraft/world/chunk/Chunk;generateSkylightMap()V"
+                            target = "Lnet/minecraft/world/chunk/storage/ExtendedBlockStorage;set(IIILnet/minecraft/block/state/IBlockState;)V"
                     )
 
             ),
@@ -83,44 +79,68 @@ public abstract class MixinChunk$Vanilla {
     }
 
     /**
-     * Redirects the getLightFor function in the else branch of setBlockState(BlockPos, IBlockState) to always return -1.
-     * This causes the if statement to never evaluate to true and effectively nullifies the call. This should probably be replaced
-     * with a better alternative.
-     */
-    @Group(name = "GetLightFor", min = 2, max = 2)
-    @Redirect(
-            method = SET_BLOCK_STATE_VANILLA,
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/chunk/Chunk;getLightFor(Lnet/minecraft/world/EnumSkyBlock;Lnet/minecraft/util/math/BlockPos;)I"
-            ),
-            expect = 0
-    )
-    private int setBlockStateVoidGetLightForVanilla(Chunk chunk, EnumSkyBlock type, BlockPos pos) {
-        return -1;
-    }
-
-    /**
-     * Redirects the propagateSkylightOcclusion call we were trying to avoid with the
-     * setBlockStateVoidGetLightForVanilla hack.
-     * <p>
-     * If for some reason the statement still evaluates and the method is called, nothing will happen. This is a fail-safe
-     * if the aforementioned hack does not work. We do NOT want to spend time in getLightFor methods in the conditional
-     * if we can avoid it.
+     * Modifies variable k1 before the conditional which decides to propagate skylight as to prevent it from
+     * ever evaluating as true
      *
      * @author Angeline
      */
-    @Group(name = "PropagateSkylightOcclusion", min = 1, max = 1)
-    @Redirect(
+    @ModifyVariable(
             method = SET_BLOCK_STATE_VANILLA,
             at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/chunk/Chunk;propagateSkylightOcclusion(II)V"
+                    value = "LOAD",
+                    ordinal = 0
             ),
-            expect = 0
+            index = 11,
+            name = "k1",
+            slice = @Slice(
+                    from = @At(
+                            value = "INVOKE",
+                            target = "Lnet/minecraft/world/chunk/Chunk;relightBlock(III)V",
+                            ordinal = 1
+                    ),
+                    to = @At(
+                            value = "INVOKE",
+                            target = "Lnet/minecraft/world/chunk/Chunk;propagateSkylightOcclusion(II)V"
+                    )
+
+            ),
+            allow = 1
     )
-    private void setBlockStateVoidPropagateSkylightOcclusionVanilla(Chunk chunk, int x, int z) {
-        // NO-OP!
-        // We don't want to do any work here.
+    private int setBlockStatePreventPropagateSkylightOcclusion1(int generateSkylight) {
+        return WIZARD_MAGIC;
     }
+
+    /**
+     * Modifies variable j1 before the conditional which decides to propagate skylight as to prevent it from
+     * ever evaluating as true.
+     *
+     * @author Angeline
+     */
+    @ModifyVariable(
+            method = SET_BLOCK_STATE_VANILLA,
+            at = @At(
+                    value = "LOAD",
+                    ordinal = 1
+            ),
+            index = 14,
+            name = "j1",
+            slice = @Slice(
+                    from = @At(
+                            value = "INVOKE",
+                            target = "Lnet/minecraft/world/chunk/Chunk;relightBlock(III)V",
+                            ordinal = 1
+                    ),
+                    to = @At(
+                            value = "INVOKE",
+                            target = "Lnet/minecraft/world/chunk/Chunk;propagateSkylightOcclusion(II)V"
+                    )
+
+            ),
+            allow = 1
+    )
+    private int setBlockStatePreventPropagateSkylightOcclusion2(int generateSkylight) {
+        return WIZARD_MAGIC;
+    }
+
+    private static final int WIZARD_MAGIC = 694698818;
 }
