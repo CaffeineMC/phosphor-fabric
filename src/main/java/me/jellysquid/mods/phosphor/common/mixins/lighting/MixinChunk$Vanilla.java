@@ -7,7 +7,10 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.*;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Slice;
 
 @Mixin(value = Chunk.class)
 public abstract class MixinChunk$Vanilla {
@@ -25,7 +28,6 @@ public abstract class MixinChunk$Vanilla {
      *
      * @author Angeline
      */
-    @Group(name = "CreateSection", min = 1, max = 1)
     @Redirect(
             method = SET_BLOCK_STATE_VANILLA,
             at = @At(
@@ -51,7 +53,6 @@ public abstract class MixinChunk$Vanilla {
      *
      * @author Angeline
      */
-    @Group(name = "InjectGenerateSkylightMap", min = 1, max = 1)
     @ModifyVariable(
             method = SET_BLOCK_STATE_VANILLA,
             at = @At(

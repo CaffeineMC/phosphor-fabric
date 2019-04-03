@@ -9,7 +9,10 @@ import org.spongepowered.asm.mixin.Dynamic;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.*;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Slice;
 
 @Mixin(value = Chunk.class, priority = 10055)
 public abstract class MixinChunk$Sponge {
@@ -30,7 +33,6 @@ public abstract class MixinChunk$Sponge {
      *
      * @author Angeline
      */
-    @Group(name = "CreateSection", min = 1, max = 1)
     @Dynamic
     @Redirect(
             method = SET_BLOCK_STATE_SPONGE,
