@@ -42,6 +42,8 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
         if (this.spongePresent) {
             logger.info("Sponge has been detected on the classpath! Sponge mixins will be used.");
+            logger.warn("Please keep in mind that Sponge support is **experimental** (although supported). We cannot currently" +
+                    "detect if you are using Sponge's async lighting feature, so please disable it if you have not already.");
         }
     }
 
@@ -62,10 +64,12 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
         if (this.spongePresent) {
             if (mixinClassName.endsWith("$Vanilla")) {
+                logger.info("Disabled mixin '{}' as we are in a Sponge environment", mixinClassName);
                 return false;
             }
         } else {
             if (mixinClassName.endsWith("$Sponge")) {
+                logger.info("Disabled mixin '{}' as we are in a basic Forge environment", mixinClassName);
                 return false;
             }
         }
