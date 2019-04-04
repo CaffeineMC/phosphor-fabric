@@ -19,7 +19,7 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.StampedLock;
 
 public class LightingEngine implements ILightingEngine {
     private static final int MAX_SCHEDULED_COUNT = 1 << 22;
@@ -99,7 +99,7 @@ public class LightingEngine implements ILightingEngine {
     private final NeighborInfo[] neighborInfos = new NeighborInfo[6];
     private PooledLongQueue.LongQueueIterator queueIt;
 
-    private final ReentrantLock lock = new ReentrantLock();
+    private final StampedLock lock = new StampedLock();
 
     public LightingEngine(final World world) {
         this.world = world;
@@ -132,12 +132,12 @@ public class LightingEngine implements ILightingEngine {
      */
     @Override
     public void scheduleLightUpdate(final EnumSkyBlock lightType, final BlockPos pos, boolean isInsideTick) {
-        this.acquireLock();
+        long stamp = this.acquireLock();
 
         try {
             this.scheduleLightUpdate(lightType, encodeWorldCoord(pos));
         } finally {
-            this.releaseLock();
+            this.releaseLock(stamp);
         }
     }
 
@@ -180,29 +180,33 @@ public class LightingEngine implements ILightingEngine {
             }
         }
 
-        this.acquireLock();
+        long stamp = this.acquireLock();
 
         try {
             this.processLightUpdatesForTypeInner(lightType);
         } finally {
-            this.releaseLock();
+            this.releaseLock(stamp);
         }
     }
 
-    private void acquireLock() {
-        if (!this.lock.tryLock()) {
+    private long acquireLock() {
+        long stamp = this.lock.tryWriteLock();
+
+        if (stamp == 0) {
             // If we cannot lock, something has gone wrong... Only one thread should ever acquire the lock.
             // Validate that we're on the right thread immediately so we can gather information.
             // It is NEVER valid to call World methods from a thread other than the owning thread of the world instance.
             ThreadUtil.validateThread(this.ownedThread);
 
             // Wait for the lock to be released. This will likely introduce unwanted stalls.
-            this.lock.lock();
+            return this.lock.writeLock();
         }
+
+        return stamp;
     }
 
-    private void releaseLock() {
-        this.lock.unlock();
+    private void releaseLock(long stamp) {
+        this.lock.unlockWrite(stamp);
     }
 
     private void processLightUpdatesForTypeInner(final EnumSkyBlock lightType) {
@@ -214,11 +218,11 @@ public class LightingEngine implements ILightingEngine {
 
         //avoid nested calls
         if (this.updating) {
-            logger.warn("Trying to access light values during relighting");
-            return;
+            throw new IllegalStateException("Already processing updates!");
         }
 
         this.updating = true;
+
         this.curChunkIdentifier = -1; //reset chunk cache
 
         this.profiler.startSection("lighting");
