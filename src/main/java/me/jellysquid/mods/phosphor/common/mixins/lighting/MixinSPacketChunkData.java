@@ -18,6 +18,6 @@ public abstract class MixinSPacketChunkData {
      */
     @Inject(method = "calculateChunkSize", at = @At("HEAD"))
     private void onCalculateChunkSize(Chunk chunkIn, boolean hasSkyLight, int changedSectionFilter, CallbackInfoReturnable<Integer> cir) {
-        ((ILightingEngineProvider) chunkIn).getLightingEngine().processLightUpdates();
+        ((ILightingEngineProvider) chunkIn).getLightingEngine().processLightUpdates(true);
     }
 }

@@ -5,16 +5,16 @@ import java.util.Deque;
 
 //Implement own queue with pooled segments to reduce allocation costs and reduce idle memory footprint
 public class PooledLongQueue {
-    private static final int CACHED_QUEUE_SEGMENTS_COUNT = 1 << 12;
-    private static final int QUEUE_SEGMENT_SIZE = 1 << 10;
+    private static final int CACHED_QUEUE_SEGMENTS_COUNT = 1 << 12; // 4096
+    private static final int QUEUE_SEGMENT_SIZE = 1 << 10; // 1024
 
-    private final LongQueueSegmentPool pool;
+    private final Pool pool;
 
-    private PooledLongQueueSegment cur, last;
+    private Segment cur, last;
 
     private int size = 0;
 
-    public PooledLongQueue(LongQueueSegmentPool pool) {
+    public PooledLongQueue(Pool pool) {
         this.pool = pool;
     }
 
@@ -32,7 +32,7 @@ public class PooledLongQueue {
         }
 
         if (this.last.index == QUEUE_SEGMENT_SIZE) {
-            PooledLongQueueSegment ret = this.last.next = this.last.pool.acquire();
+            Segment ret = this.last.next = this.last.pool.acquire();
             ret.longArray[ret.index++] = val;
 
             this.last = ret;
@@ -48,10 +48,10 @@ public class PooledLongQueue {
     }
 
     private void clear() {
-        PooledLongQueueSegment segment = this.cur;
+        Segment segment = this.cur;
 
         while (segment != null) {
-            PooledLongQueueSegment next = segment.next;
+            Segment next = segment.next;
             segment.release();
             segment = next;
         }
@@ -62,12 +62,12 @@ public class PooledLongQueue {
     }
 
     public class LongQueueIterator {
-        private PooledLongQueueSegment cur;
+        private Segment cur;
         private long[] curArray;
 
         private int index, capacity;
 
-        private LongQueueIterator(PooledLongQueueSegment cur) {
+        private LongQueueIterator(Segment cur) {
             this.cur = cur;
 
             if (this.cur != null) {
@@ -102,31 +102,31 @@ public class PooledLongQueue {
         }
     }
 
-    public static class LongQueueSegmentPool {
-        private final Deque<PooledLongQueueSegment> segmentPool = new ArrayDeque<>();
+    public static class Pool {
+        private final Deque<Segment> segmentPool = new ArrayDeque<>();
 
-        private PooledLongQueueSegment acquire() {
+        private Segment acquire() {
             if (this.segmentPool.isEmpty()) {
-                return new PooledLongQueueSegment(this);
+                return new Segment(this);
             }
 
             return this.segmentPool.pop();
         }
 
-        private void release(PooledLongQueueSegment segment) {
+        private void release(Segment segment) {
             if (this.segmentPool.size() < CACHED_QUEUE_SEGMENTS_COUNT) {
                 this.segmentPool.push(segment);
             }
         }
     }
 
-    private static class PooledLongQueueSegment {
+    private static class Segment {
         private final long[] longArray = new long[QUEUE_SEGMENT_SIZE];
         private int index = 0;
-        private PooledLongQueueSegment next;
-        private final LongQueueSegmentPool pool;
+        private Segment next;
+        private final Pool pool;
 
-        private PooledLongQueueSegment(LongQueueSegmentPool pool) {
+        private Segment(Pool pool) {
             this.pool = pool;
         }
 

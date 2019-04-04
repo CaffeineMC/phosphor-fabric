@@ -98,7 +98,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
      */
     @Inject(method = "getLightSubtracted", at = @At("HEAD"))
     private void onGetLightSubtracted(BlockPos pos, int amount, CallbackInfoReturnable<Integer> cir) {
-        this.lightingEngine.processLightUpdates();
+        this.lightingEngine.processLightUpdates(false);
     }
 
     /**
@@ -163,36 +163,32 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
     }
 
     /**
-     * Hook for calculating light updates only as needed. {@link MixinChunk#getCachedLightFor(EnumSkyBlock, BlockPos)} does not
+     * @reason Hook for calculating light updates only as needed. {@link MixinChunk#getCachedLightFor(EnumSkyBlock, BlockPos)} does not
      * call this hook.
      *
      * @author Angeline
      */
-    @Inject(method = "getLightFor(Lnet/minecraft/world/EnumSkyBlock;Lnet/minecraft/util/math/BlockPos;)I", at = @At("HEAD"), cancellable = true)
-    private void getLightFor(EnumSkyBlock type, BlockPos pos, CallbackInfoReturnable<Integer> callback) {
-        this.lightingEngine.processLightUpdatesForType(type);
+    @Overwrite
+    public int getLightFor(EnumSkyBlock type, BlockPos pos) {
+        this.lightingEngine.processLightUpdatesForType(type, false);
 
-        int light = this.getCachedLightFor(type, pos);
-
-        callback.setReturnValue(light);
+        return this.getCachedLightFor(type, pos);
     }
 
     /**
-     * Hooks into checkLight() to check chunk lighting and returns immediately after, voiding the rest of the function.
+     * @reason Hooks into checkLight() to check chunk lighting and returns immediately after, voiding the rest of the function.
      *
      * @author Angeline
      */
-    @Inject(method = "checkLight()V", at = @At("HEAD"), cancellable = true)
-    private void checkLight(CallbackInfo callback) {
+    @Overwrite
+    public void checkLight() {
         this.isTerrainPopulated = true;
 
         LightingHooks.checkChunkLighting((Chunk) (Object) this, this.world);
-
-        callback.cancel();
     }
 
     /**
-     * Optimized version of recheckGaps. Avoids chunk fetches as much as possible.
+     * @reason Optimized version of recheckGaps. Avoids chunk fetches as much as possible.
      *
      * @author Angeline
      */

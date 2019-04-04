@@ -105,7 +105,7 @@ public class LightingEngine implements ILightingEngine {
         this.world = world;
         this.profiler = world.profiler;
 
-        PooledLongQueue.LongQueueSegmentPool pool = new PooledLongQueue.LongQueueSegmentPool();
+        PooledLongQueue.Pool pool = new PooledLongQueue.Pool();
 
         this.initialBrightenings = new PooledLongQueue(pool);
         this.initialDarkenings = new PooledLongQueue(pool);
@@ -128,10 +128,10 @@ public class LightingEngine implements ILightingEngine {
     }
 
     /**
-     * Schedules a light update for the specified light type and position to be processed later by {@link #processLightUpdatesForType(EnumSkyBlock)}
+     * Schedules a light update for the specified light type and position to be processed later by {@link ILightingEngine#processLightUpdatesForType(EnumSkyBlock, boolean)}
      */
     @Override
-    public void scheduleLightUpdate(final EnumSkyBlock lightType, final BlockPos pos) {
+    public void scheduleLightUpdate(final EnumSkyBlock lightType, final BlockPos pos, boolean isInsideTick) {
         this.acquireLock();
 
         try {
@@ -142,7 +142,7 @@ public class LightingEngine implements ILightingEngine {
     }
 
     /**
-     * Schedules a light update for the specified light type and position to be processed later by {@link #processLightUpdates()}
+     * Schedules a light update for the specified light type and position to be processed later by {@link ILightingEngine#processLightUpdates(boolean)}
      */
     private void scheduleLightUpdate(final EnumSkyBlock lightType, final long pos) {
         final PooledLongQueue queue = this.queuedLightUpdates[lightType.ordinal()];
@@ -151,27 +151,33 @@ public class LightingEngine implements ILightingEngine {
 
         //make sure there are not too many queued light updates
         if (queue.size() >= MAX_SCHEDULED_COUNT) {
-            this.processLightUpdatesForType(lightType);
+            this.processLightUpdatesForType(lightType, false);
         }
     }
 
     /**
-     * Calls {@link #processLightUpdatesForType(EnumSkyBlock)} for both light types
+     * Calls {@link ILightingEngine#processLightUpdatesForType(EnumSkyBlock, boolean)} for both light types
+     * @param insideTickEvent Whether or not the call is guaranteed to be coming from a tick event. This allows us to cull
+     *                        some unnecessary thread checks.
      */
     @Override
-    public void processLightUpdates() {
-        this.processLightUpdatesForType(EnumSkyBlock.SKY);
-        this.processLightUpdatesForType(EnumSkyBlock.BLOCK);
+    public void processLightUpdates(boolean insideTickEvent) {
+        this.processLightUpdatesForType(EnumSkyBlock.SKY, insideTickEvent);
+        this.processLightUpdatesForType(EnumSkyBlock.BLOCK, insideTickEvent);
     }
 
     /**
      * Processes light updates of the given light type
      */
     @Override
-    public void processLightUpdatesForType(final EnumSkyBlock lightType) {
-        //renderer accesses world un-synchronized, don't modify anything in that case
-        if (this.world.isRemote && !PhosphorMod.PROXY.getMinecraftThread().isCallingFromMinecraftThread()) {
-            return;
+    public void processLightUpdatesForType(final EnumSkyBlock lightType, boolean insideTickEvent) {
+        if (this.world.isRemote) {
+            if (!insideTickEvent) {
+                return;
+            } else if (!PhosphorMod.PROXY.getMinecraftThread().isCallingFromMinecraftThread()) {
+                PhosphorMod.LOGGER.warn("insideTickEvent was true, but we're being called from an unexpected thread!");
+                return;
+            }
         }
 
         this.acquireLock();

@@ -30,7 +30,7 @@ public abstract class MixinWorld implements ILightingEngineProvider {
      */
     @Inject(method = "checkLightFor", at = @At("HEAD"), cancellable = true)
     private void checkLightFor(EnumSkyBlock type, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        this.lightingEngine.scheduleLightUpdate(type, pos);
+        this.lightingEngine.scheduleLightUpdate(type, pos, false);
 
         cir.setReturnValue(true);
     }
