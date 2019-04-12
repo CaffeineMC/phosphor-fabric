@@ -2,9 +2,10 @@
   {
     "modid": "phosphor-lighting",
     "name": "Phosphor Lighting Engine",
-    "description": "Lighting engine performance optimizations and bug fixes for Minecraft. These improvements are based upon the work done by Mathe172 and PhiPro95. Without their work towards reverse engineering and diagnosing Minecraft's lighting performance crisis, this project would not have been possible.",
+    "description": "Consider pledging to my Patreon! Your support will go directly towards funding development of Phosphor and other performance enhancing mods. https://patreon.com/jellysquid\n\nLighting engine performance optimizations and bug fixes for Minecraft. These improvements are based upon the work done by Mathe172 and PhiPro95. Without their work towards reverse engineering and diagnosing Minecraft's lighting performance crisis, this project would not have been possible.\n\nYou can also follow development on my Twitter, if that's your thing: https://twitter.com/jellysquid_",
     "version": "${version}",
     "mcversion": "${mcversion}",
+    "logoFile": "/assets/phosphor-lighting/icon.png",
     "url": "https://minecraft.curseforge.com/projects/phosphor",
     "authorList": [
       "Angeline (@jellysquid)"
