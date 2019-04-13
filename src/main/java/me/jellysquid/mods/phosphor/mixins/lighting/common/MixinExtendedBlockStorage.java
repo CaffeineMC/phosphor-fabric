@@ -72,8 +72,8 @@ public class MixinExtendedBlockStorage {
 
         // -1 indicates the lightRefCount needs to be re-calculated
         if (this.lightRefCount == -1) {
-            if (this.checkLightArrayEqual(this.skyLight.getData(), (byte) 0xFF)
-                    && this.checkLightArrayEqual(this.blockLight.getData(), (byte) 0x00)) {
+            if (this.checkLightArrayEqual(this.skyLight, (byte) 0xFF)
+                    && this.checkLightArrayEqual(this.blockLight, (byte) 0x00)) {
                 this.lightRefCount = 0; // Lighting is trivial, don't send to clients
             } else {
                 this.lightRefCount = 1; // Lighting is not trivial, send to clients
@@ -83,13 +83,19 @@ public class MixinExtendedBlockStorage {
         return this.lightRefCount == 0;
     }
 
-    private boolean checkLightArrayEqual(byte[] arr, byte val) {
+    private boolean checkLightArrayEqual(NibbleArray storage, byte val) {
+        if (storage == null) {
+            return true;
+        }
+
+        byte[] arr = storage.getData();
+
         for (byte b : arr) {
             if (b != val) {
-                return true;
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 }
