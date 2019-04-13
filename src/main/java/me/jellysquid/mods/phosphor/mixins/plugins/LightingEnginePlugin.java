@@ -1,7 +1,6 @@
 package me.jellysquid.mods.phosphor.mixins.plugins;
 
 import me.jellysquid.mods.phosphor.mod.PhosphorConfig;
-import me.jellysquid.mods.phosphor.mod.world.lighting.LightingEngine;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +14,8 @@ import java.util.Set;
 
 public class LightingEnginePlugin implements IMixinConfigPlugin {
     private static final Logger logger = LogManager.getLogger("Phosphor Plugin");
+
+    public static boolean ENABLE_ILLEGAL_THREAD_ACCESS_WARNINGS = false;
 
     private PhosphorConfig config;
 
@@ -30,7 +31,7 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
             logger.info("Phosphor has been disabled through configuration!");
         }
 
-        LightingEngine.ENABLE_ILLEGAL_THREAD_ACCESS_WARNINGS = this.config.enableIllegalThreadAccessWarnings;
+        ENABLE_ILLEGAL_THREAD_ACCESS_WARNINGS = this.config.enableIllegalThreadAccessWarnings;
 
         try {
             Class.forName("org.spongepowered.mod.SpongeCoremod");

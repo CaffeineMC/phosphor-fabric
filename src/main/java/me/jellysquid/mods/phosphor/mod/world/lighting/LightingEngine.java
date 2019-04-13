@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mod.world.lighting;
 
 import me.jellysquid.mods.phosphor.api.IChunkLighting;
 import me.jellysquid.mods.phosphor.api.ILightingEngine;
+import me.jellysquid.mods.phosphor.mixins.plugins.LightingEnginePlugin;
 import me.jellysquid.mods.phosphor.mod.PhosphorMod;
 import me.jellysquid.mods.phosphor.mod.collections.PooledLongQueue;
 import net.minecraft.block.state.IBlockState;
@@ -19,8 +20,6 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import java.util.concurrent.locks.StampedLock;
 
 public class LightingEngine implements ILightingEngine {
-    public static boolean ENABLE_ILLEGAL_THREAD_ACCESS_WARNINGS = true;
-
     private static final int MAX_SCHEDULED_COUNT = 1 << 22;
 
     private static final int MAX_LIGHT = 15;
@@ -195,7 +194,7 @@ public class LightingEngine implements ILightingEngine {
             // Validate that we're on the right thread immediately so we can gather information.
             // It is NEVER valid to call World methods from a thread other than the owning thread of the world instance.
             // Users can safely disable this warning, however it will not resolve the issue.
-            if (LightingEngine.ENABLE_ILLEGAL_THREAD_ACCESS_WARNINGS) {
+            if (LightingEnginePlugin.ENABLE_ILLEGAL_THREAD_ACCESS_WARNINGS) {
                 Thread current = Thread.currentThread();
 
                 if (current != this.ownedThread) {

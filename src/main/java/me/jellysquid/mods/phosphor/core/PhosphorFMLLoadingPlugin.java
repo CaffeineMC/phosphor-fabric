@@ -7,7 +7,6 @@ import java.util.Map;
 
 @SuppressWarnings("unused")
 @IFMLLoadingPlugin.MCVersion("1.12.2")
-@IFMLLoadingPlugin.SortingIndex(100000)
 public class PhosphorFMLLoadingPlugin implements IFMLLoadingPlugin {
     @Override
     public String[] getASMTransformerClass() {
