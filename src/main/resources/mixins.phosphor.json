@@ -10,6 +10,7 @@
     "common.MixinChunk$Sponge",
     "common.MixinChunk$Vanilla",
     "common.MixinChunkProviderServer",
+    "common.MixinExtendedBlockStorage",
     "common.MixinSPacketChunkData",
     "common.MixinWorld"
   ],
