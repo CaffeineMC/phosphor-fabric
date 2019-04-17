@@ -1,4 +1,5 @@
 {
+  "required": true,
   "minVersion": "0.7.10",
   "package": "me.jellysquid.mods.phosphor.mixins.lighting",
   "plugin": "me.jellysquid.mods.phosphor.mixins.plugins.LightingEnginePlugin",
