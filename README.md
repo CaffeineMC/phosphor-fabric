@@ -1,11 +1,11 @@
-<a href="https://www.patreon.com/bePatron?u=824442"><img src="https://i.vgy.me/AjBz9h.png" width="200"></a>
+<a href="https://www.patreon.com/bePatron?u=824442"><img src="https://github.com/jellysquid3/Phosphor/raw/master/doc/patreon.png" width="200"></a>
 
 If Phosphor has made an improvement in performance for you, [please consider pledging to my Patreon!](https://patreon.com/jellysquid) Every pledge goes directly towards funding development and allows me
 to continue making Minecraft mods.
 
 -----
 
-![Project icon](https://i.vgy.me/NBLC9k.png)
+![Project icon](https://github.com/jellysquid3/Phosphor/raw/master/doc/logo.png)
 
 # Phosphor
 ![GitHub license](https://img.shields.io/github/license/jellysquid3/phosphor.svg)
@@ -17,7 +17,7 @@ Phosphor is a free and open-source Minecraft mod (under GNU GPLv3) aiming to sav
 It works on **both the client and server**, and can be installed on servers **without requiring clients to also have the mod**.
 
 <p align="center">
-  <img src="https://i.vgy.me/YDjLK6.png" />
+  <img src="https://github.com/jellysquid3/Phosphor/raw/master/doc/benchmarks.png" />
 </p>
 
 _For more information about how these results were obtained, [please see my writeup on the benchmarking methodology](https://gist.github.com/jellysquid3/3b545be9c00cc59fe5c68927d03ec708)._
