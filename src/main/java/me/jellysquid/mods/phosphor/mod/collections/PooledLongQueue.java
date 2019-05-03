@@ -14,20 +14,38 @@ public class PooledLongQueue {
 
     private int size = 0;
 
+    // Stores whether or not the queue is empty. Updates to this field will be seen by all threads immediately. Writes
+    // to volatile fields are generally quite a bit more expensive, so we avoid repeatedly setting this flag to true.
+    private volatile boolean empty;
+
     public PooledLongQueue(Pool pool) {
         this.pool = pool;
     }
 
+    /**
+     * Not thread-safe! If you must know whether or not the queue is empty, please use {@link PooledLongQueue#isEmpty()}.
+     *
+     * @return The number of encoded values present in this queue
+     */
     public int size() {
         return this.size;
     }
 
+    /**
+     * Thread-safe method to check whether or not this queue has work to do. Significantly cheaper than acquiring a lock.
+     * @return True if the queue is empty, otherwise false
+     */
     public boolean isEmpty() {
-        return this.cur == null;
+        return this.empty;
     }
 
+    /**
+     * Not thread-safe! Adds an encoded long value into this queue.
+     * @param val The encoded value to add
+     */
     public void add(final long val) {
         if (this.cur == null) {
+            this.empty = false;
             this.cur = this.last = this.pool.acquire();
         }
 
@@ -43,6 +61,10 @@ public class PooledLongQueue {
         ++this.size;
     }
 
+    /**
+     * Not thread safe! Creates an iterator over the values in this queue. Values will be returned in a FIFO fashion.
+     * @return The iterator
+     */
     public LongQueueIterator iterator() {
         return new LongQueueIterator(this.cur);
     }
@@ -59,6 +81,7 @@ public class PooledLongQueue {
         this.size = 0;
         this.cur = null;
         this.last = null;
+        this.empty = true;
     }
 
     public class LongQueueIterator {
@@ -97,7 +120,7 @@ public class PooledLongQueue {
             return ret;
         }
 
-        public void dispose() {
+        public void finish() {
             PooledLongQueue.this.clear();
         }
     }

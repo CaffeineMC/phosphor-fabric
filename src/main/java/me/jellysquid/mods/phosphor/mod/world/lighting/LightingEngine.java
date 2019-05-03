@@ -168,19 +168,24 @@ public class LightingEngine implements ILightingEngine {
      */
     @Override
     public void processLightUpdatesForType(final EnumSkyBlock lightType, boolean isTickEvent) {
-        if (this.world.isRemote) {
-            if (!isTickEvent) {
-                return;
-            } else if (!PhosphorMod.PROXY.getMinecraftThread().isCallingFromMinecraftThread()) {
-                PhosphorMod.LOGGER.warn("insideTickEvent was true, but we're being called from an unexpected thread!");
-                return;
-            }
+        // We only want to perform updates if we're being called from a tick event on the client
+        // There are many locations in the client code which will end up making calls to this method, usually from
+        // other threads.
+        if (this.world.isRemote && !isTickEvent) {
+            return;
+        }
+
+        final PooledLongQueue queue = this.queuedLightUpdates[lightType.ordinal()];
+
+        // Quickly check if the queue is empty before we acquire a more expensive lock.
+        if (queue.isEmpty()) {
+            return;
         }
 
         long stamp = this.acquireLock();
 
         try {
-            this.processLightUpdatesForTypeInner(lightType);
+            this.processLightUpdatesForTypeInner(lightType, queue);
         } finally {
             this.releaseLock(stamp);
         }
@@ -225,13 +230,7 @@ public class LightingEngine implements ILightingEngine {
         this.lock.unlockWrite(stamp);
     }
 
-    private void processLightUpdatesForTypeInner(final EnumSkyBlock lightType) {
-        final PooledLongQueue queue = this.queuedLightUpdates[lightType.ordinal()];
-
-        if (queue.isEmpty()) {
-            return;
-        }
-
+    private void processLightUpdatesForTypeInner(final EnumSkyBlock lightType, final PooledLongQueue queue) {
         //avoid nested calls
         if (this.updating) {
             throw new IllegalStateException("Already processing updates!");
@@ -515,7 +514,7 @@ public class LightingEngine implements ILightingEngine {
      */
     private boolean nextItem() {
         if (!this.queueIt.hasNext()) {
-            this.queueIt.dispose();
+            this.queueIt.finish();
             this.queueIt = null;
 
             return false;
