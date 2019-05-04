@@ -5,7 +5,7 @@ final class PhosphorConstants {
 
     static final String MOD_NAME = "Phosphor";
 
-    static final String MOD_VERSION = "1.12.2-0.2.3";
+    static final String MOD_VERSION = "1.12.2-0.2.4";
 
     static final String MOD_FINGERPRINT = "f0387d288626cc2d937daa504e74af570c52a2f1";
 
