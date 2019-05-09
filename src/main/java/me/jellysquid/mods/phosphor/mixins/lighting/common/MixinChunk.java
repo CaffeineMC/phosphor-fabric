@@ -339,11 +339,23 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
         ExtendedBlockStorage extendedblockstorage = this.storageArrays[j >> 4];
 
         if (extendedblockstorage == Chunk.NULL_BLOCK_STORAGE) {
-            return this.canSeeSky(pos) ? type.defaultLightValue : 0;
+            if (this.canSeeSky(pos)) {
+                return type.defaultLightValue;
+            } else {
+                return 0;
+            }
         } else if (type == EnumSkyBlock.SKY) {
-            return !this.world.provider.hasSkyLight() ? 0 : extendedblockstorage.getSkyLight(i, j & 15, k);
+            if (!this.world.provider.hasSkyLight()) {
+                return 0;
+            } else {
+                return extendedblockstorage.getSkyLight(i, j & 15, k);
+            }
         } else {
-            return type == EnumSkyBlock.BLOCK ? extendedblockstorage.getBlockLight(i, j & 15, k) : type.defaultLightValue;
+            if (type == EnumSkyBlock.BLOCK) {
+                return extendedblockstorage.getBlockLight(i, j & 15, k);
+            } else {
+                return type.defaultLightValue;
+            }
         }
     }
 

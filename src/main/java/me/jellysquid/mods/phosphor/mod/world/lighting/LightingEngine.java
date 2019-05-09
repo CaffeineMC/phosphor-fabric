@@ -404,11 +404,41 @@ public class LightingEngine implements ILightingEngine {
             }
 
             if (nChunk != null) {
-                info.light = this.getPosCachedLight(nPos, nChunk, lightType);
-                info.section = nChunk.getBlockStorageArray()[nPos.getY() >> 4];
+                ExtendedBlockStorage nSection = nChunk.getBlockStorageArray()[nPos.getY() >> 4];
+
+                info.light = getCachedLightFor(nChunk, nSection, nPos, lightType);
+                info.section = nSection;
             }
         }
     }
+
+
+    private static int getCachedLightFor(Chunk chunk, ExtendedBlockStorage storage, BlockPos pos, EnumSkyBlock type) {
+        int i = pos.getX() & 15;
+        int j = pos.getY();
+        int k = pos.getZ() & 15;
+
+        if (storage == Chunk.NULL_BLOCK_STORAGE) {
+            if (type == EnumSkyBlock.SKY && chunk.canSeeSky(pos)) {
+                return type.defaultLightValue;
+            } else {
+                return 0;
+            }
+        } else if (type == EnumSkyBlock.SKY) {
+            if (!chunk.getWorld().provider.hasSkyLight()) {
+                return 0;
+            } else {
+                return storage.getSkyLight(i, j & 15, k);
+            }
+        } else {
+            if (type == EnumSkyBlock.BLOCK) {
+                return storage.getBlockLight(i, j & 15, k);
+            } else {
+                return type.defaultLightValue;
+            }
+        }
+    }
+
 
     private int calculateNewLightFromCursor(final EnumSkyBlock lightType) {
         final IBlockState state = LightingEngineHelpers.posToState(this.curPos, this.curChunk);
@@ -503,6 +533,8 @@ public class LightingEngine implements ILightingEngine {
         return (y << sY) | (x + (1 << lX - 1) << sX) | (z + (1 << lZ - 1) << sZ);
     }
 
+    private static int ITEMS_PROCESSED = 0, CHUNKS_FETCHED = 0;
+
     /**
      * Polls a new item from <code>curQueue</code> and fills in state data members
      *
@@ -526,17 +558,16 @@ public class LightingEngine implements ILightingEngine {
         if (this.curChunkIdentifier != chunkIdentifier) {
             this.curChunk = this.getChunk(this.curPos);
             this.curChunkIdentifier = chunkIdentifier;
+            CHUNKS_FETCHED++;
         }
+
+        ITEMS_PROCESSED++;
 
         return true;
     }
 
-    private int getPosCachedLight(final MutableBlockPos pos, final Chunk chunk, final EnumSkyBlock lightType) {
-        return ((IChunkLighting) chunk).getCachedLightFor(lightType, pos);
-    }
-
     private int getCursorCachedLight(final EnumSkyBlock lightType) {
-        return this.getPosCachedLight(this.curPos, this.curChunk, lightType);
+        return ((IChunkLighting) this.curChunk).getCachedLightFor(lightType, this.curPos);
     }
 
     /**
