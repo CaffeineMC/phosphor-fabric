@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.Slice;
 
 @Mixin(value = Chunk.class, priority = 10055)
 public abstract class MixinChunk$Sponge {
-    private static final String SET_BLOCK_STATE_SPONGE = "setBlockState" +
+    private static final String SET_BLOCK_STATE_SPONGE = "bridge$setBlockState" +
             "(Lnet/minecraft/util/math/BlockPos;" +
             "Lnet/minecraft/block/state/IBlockState;" +
             "Lnet/minecraft/block/state/IBlockState;" +

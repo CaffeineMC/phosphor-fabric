@@ -46,8 +46,8 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
         if (this.spongePresent) {
             logger.info("Sponge has been detected on the classpath! Enabling Sponge specific patches...");
-            logger.warn("Please keep in mind that Sponge support is **experimental** (although we do support and encourage you to use it!). We cannot currently " +
-                    "detect if you are using Sponge's async lighting feature. If you have not already done so, please disable it in your configuration file for SpongeForge.");
+            logger.warn("We cannot currently detect if you are using Sponge's async lighting patch. If you have not " +
+                    "already done so, please disable it in your configuration file for SpongeForge or you will run into issues.");
         }
     }
 
