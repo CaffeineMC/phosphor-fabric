@@ -6,6 +6,7 @@ import com.google.gson.annotations.SerializedName;
 
 import java.io.*;
 
+// This class will be initialized very early and should never load any game/mod code.
 public class PhosphorConfig {
     private static final Gson gson = createGson();
 

@@ -17,7 +17,7 @@ public class PhosphorFMLSetupHook implements IFMLCallHook {
 
     @Override
     public Void call() {
-        logger.info("Phosphor has been hooked by Forge, setting up Mixin and plugins");
+        logger.debug("Success! Phosphor has been called into from Forge... initializing Mixin environment and configurations");
 
         MixinBootstrap.init();
 

@@ -23,17 +23,20 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        logger.info("Loading configuration");
+        logger.debug("Loading configuration");
 
         this.config = PhosphorConfig.loadConfig();
 
         if (!this.config.enablePhosphor) {
-            logger.info("Phosphor has been disabled through configuration!");
+            logger.warn("Phosphor has been disabled through mod configuration! No patches will be applied...");
         }
 
         ENABLE_ILLEGAL_THREAD_ACCESS_WARNINGS = this.config.enableIllegalThreadAccessWarnings;
 
         try {
+            // This class will always be loaded by Forge prior to us (due to the tweak class ordering) and should have
+            // no effect. On the off chance it isn't, early class loading shouldn't cause any issues as nobody seems to
+            // transform core-mods themselves, or at least I hope they don't...
             Class.forName("org.spongepowered.mod.SpongeCoremod");
 
             this.spongePresent = true;
@@ -42,9 +45,9 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
         }
 
         if (this.spongePresent) {
-            logger.info("Sponge has been detected on the classpath! Sponge mixins will be used.");
-            logger.warn("Please keep in mind that Sponge support is **experimental** (although supported). We cannot currently" +
-                    "detect if you are using Sponge's async lighting feature, so please disable it if you have not already.");
+            logger.info("Sponge has been detected on the classpath! Enabling Sponge specific patches...");
+            logger.warn("Please keep in mind that Sponge support is **experimental** (although we do support and encourage you to use it!). We cannot currently " +
+                    "detect if you are using Sponge's async lighting feature. If you have not already done so, please disable it in your configuration file for SpongeForge.");
         }
     }
 
@@ -64,19 +67,29 @@ public class LightingEnginePlugin implements IMixinConfigPlugin {
         }
 
         if (this.spongePresent) {
+            // Disable all Vanilla patches if we are in a Sponge environment
             if (mixinClassName.endsWith("$Vanilla")) {
-                logger.info("Disabled mixin '{}' as we are in a Sponge environment", mixinClassName);
+                logger.debug("Disabled mixin '{}' because we are in a SpongeForge environment", mixinClassName);
+
                 return false;
             }
         } else {
+            // Disable all Sponge patches if we are not in a Sponge environment
             if (mixinClassName.endsWith("$Sponge")) {
-                logger.info("Disabled mixin '{}' as we are in a basic Forge environment", mixinClassName);
+                logger.debug("Disabled patch '{}' because we are in a standard Vanilla/Forge environment", mixinClassName);
+
                 return false;
             }
         }
 
         // Do not apply client transformations if we are not in a client environment!
-        return !targetClassName.startsWith("net.minecraft.client") || MixinEnvironment.getCurrentEnvironment().getSide() == MixinEnvironment.Side.CLIENT;
+        if (targetClassName.startsWith("net.minecraft.client") && MixinEnvironment.getCurrentEnvironment().getSide() != MixinEnvironment.Side.CLIENT) {
+            logger.debug("Disabled patch '{}' because it targets an client-side class unavailable in the current environment", mixinClassName);
+
+            return false;
+        }
+
+        return true;
     }
 
     @Override
