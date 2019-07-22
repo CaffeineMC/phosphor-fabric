@@ -10,30 +10,47 @@ import java.io.*;
 public class PhosphorConfig {
     private static final Gson gson = createGson();
 
+    private static PhosphorConfig INSTANCE;
+
     @SerializedName("enable_illegal_thread_access_warnings")
     public boolean enableIllegalThreadAccessWarnings = true;
 
     @SerializedName("enable_phosphor")
     public boolean enablePhosphor = true;
 
-    public static PhosphorConfig loadConfig() {
-        File file = getConfigFile();
+    @SerializedName("show_patreon_message")
+    public boolean showPatreonMessage = true;
 
-        if (!file.exists()) {
-            PhosphorConfig config = new PhosphorConfig();
-            config.saveConfig();
-
-            return config;
-        }
-
-        try (Reader reader = new FileReader(file)) {
-            return gson.fromJson(reader, PhosphorConfig.class);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to deserialize config from disk", e);
-        }
+    public static PhosphorConfig instance() {
+        return INSTANCE;
     }
 
-    private void saveConfig() {
+    public static PhosphorConfig loadConfig() {
+        if (INSTANCE != null) {
+            return INSTANCE;
+        }
+
+        File file = getConfigFile();
+
+        PhosphorConfig config;
+
+        if (!file.exists()) {
+            config = new PhosphorConfig();
+            config.saveConfig();
+        } else {
+            try (Reader reader = new FileReader(file)) {
+                config = gson.fromJson(reader, PhosphorConfig.class);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to deserialize config from disk", e);
+            }
+        }
+
+        INSTANCE = config;
+
+        return config;
+    }
+
+    public void saveConfig() {
         File dir = getConfigDirectory();
 
         if (!dir.exists()) {
