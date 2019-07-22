@@ -98,7 +98,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
      */
     @Inject(method = "getLightSubtracted", at = @At("HEAD"))
     private void onGetLightSubtracted(BlockPos pos, int amount, CallbackInfoReturnable<Integer> cir) {
-        this.lightingEngine.processLightUpdates(false);
+        this.lightingEngine.processLightUpdates();
     }
 
     /**
@@ -170,7 +170,7 @@ public abstract class MixinChunk implements IChunkLighting, IChunkLightingData, 
      */
     @Overwrite
     public int getLightFor(EnumSkyBlock type, BlockPos pos) {
-        this.lightingEngine.processLightUpdatesForType(type, false);
+        this.lightingEngine.processLightUpdatesForType(type);
 
         return this.getCachedLightFor(type, pos);
     }

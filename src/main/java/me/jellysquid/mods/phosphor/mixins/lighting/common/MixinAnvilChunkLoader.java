@@ -22,7 +22,7 @@ public abstract class MixinAnvilChunkLoader {
      */
     @Inject(method = "saveChunk", at = @At("HEAD"))
     private void onConstructed(World world, Chunk chunkIn, CallbackInfo callbackInfo) {
-        ((ILightingEngineProvider) world).getLightingEngine().processLightUpdates(true);
+        ((ILightingEngineProvider) world).getLightingEngine().processLightUpdates();
     }
 
     /**

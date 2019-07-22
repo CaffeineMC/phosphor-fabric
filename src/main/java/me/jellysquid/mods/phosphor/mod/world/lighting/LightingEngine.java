@@ -6,6 +6,7 @@ import me.jellysquid.mods.phosphor.mixins.plugins.LightingEnginePlugin;
 import me.jellysquid.mods.phosphor.mod.PhosphorMod;
 import me.jellysquid.mods.phosphor.mod.collections.PooledLongQueue;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
@@ -16,6 +17,8 @@ import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -124,10 +127,10 @@ public class LightingEngine implements ILightingEngine {
     }
 
     /**
-     * Schedules a light update for the specified light type and position to be processed later by {@link ILightingEngine#processLightUpdatesForType(EnumSkyBlock, boolean)}
+     * Schedules a light update for the specified light type and position to be processed later by {@link ILightingEngine#processLightUpdatesForType(EnumSkyBlock)}
      */
     @Override
-    public void scheduleLightUpdate(final EnumSkyBlock lightType, final BlockPos pos, boolean isTickEvent) {
+    public void scheduleLightUpdate(final EnumSkyBlock lightType, final BlockPos pos) {
         this.acquireLock();
 
         try {
@@ -138,7 +141,7 @@ public class LightingEngine implements ILightingEngine {
     }
 
     /**
-     * Schedules a light update for the specified light type and position to be processed later by {@link ILightingEngine#processLightUpdates(boolean)}
+     * Schedules a light update for the specified light type and position to be processed later by {@link ILightingEngine#processLightUpdates()}
      */
     private void scheduleLightUpdate(final EnumSkyBlock lightType, final long pos) {
         final PooledLongQueue queue = this.queuedLightUpdates[lightType.ordinal()];
@@ -147,31 +150,29 @@ public class LightingEngine implements ILightingEngine {
 
         //make sure there are not too many queued light updates
         if (queue.size() >= MAX_SCHEDULED_COUNT) {
-            this.processLightUpdatesForType(lightType, false);
+            this.processLightUpdatesForType(lightType);
         }
     }
 
     /**
-     * Calls {@link ILightingEngine#processLightUpdatesForType(EnumSkyBlock, boolean)} for both light types
+     * Calls {@link ILightingEngine#processLightUpdatesForType(EnumSkyBlock)} for both light types
      *
-     * @param isTickEvent Whether or not the call is guaranteed to be coming from a tick event. This allows us to cull
-     *                    some unnecessary thread checks.
      */
     @Override
-    public void processLightUpdates(boolean isTickEvent) {
-        this.processLightUpdatesForType(EnumSkyBlock.SKY, isTickEvent);
-        this.processLightUpdatesForType(EnumSkyBlock.BLOCK, isTickEvent);
+    public void processLightUpdates() {
+        this.processLightUpdatesForType(EnumSkyBlock.SKY);
+        this.processLightUpdatesForType(EnumSkyBlock.BLOCK);
     }
 
     /**
      * Processes light updates of the given light type
      */
     @Override
-    public void processLightUpdatesForType(final EnumSkyBlock lightType, boolean isTickEvent) {
+    public void processLightUpdatesForType(final EnumSkyBlock lightType) {
         // We only want to perform updates if we're being called from a tick event on the client
         // There are many locations in the client code which will end up making calls to this method, usually from
         // other threads.
-        if (this.world.isRemote && !isTickEvent) {
+        if (this.world.isRemote && !this.isCallingFromMainThread()) {
             return;
         }
 
@@ -189,6 +190,11 @@ public class LightingEngine implements ILightingEngine {
         } finally {
             this.releaseLock();
         }
+    }
+
+    @SideOnly(Side.CLIENT)
+    private boolean isCallingFromMainThread() {
+        return Minecraft.getMinecraft().isCallingFromMinecraftThread();
     }
 
     private void acquireLock() {
