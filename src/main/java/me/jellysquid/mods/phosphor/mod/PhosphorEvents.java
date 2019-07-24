@@ -17,7 +17,13 @@ import net.minecraftforge.fml.relauncher.Side;
 public class PhosphorEvents {
     @SubscribeEvent
     public static void onPlayerJoinWorld(EntityJoinWorldEvent event) {
-        if (!PhosphorFlags.DISPLAY_PATREON || !event.getWorld().isRemote) {
+        if (!event.getWorld().isRemote) {
+            return;
+        }
+
+        PhosphorConfig config = PhosphorConfig.instance();
+
+        if (!config.enablePhosphor || !config.showPatreonMessage) {
             return;
         }
 
@@ -26,12 +32,6 @@ public class PhosphorEvents {
         }
 
         EntityPlayer player = (EntityPlayer) event.getEntity();
-
-        PhosphorConfig config = PhosphorConfig.instance();
-
-        if (!config.enablePhosphor || !config.showPatreonMessage) {
-            return;
-        }
 
         if (PhosphorEvents.isAetherInstalled()) {
             player.sendMessage(new TextComponentString(TextFormatting.YELLOW + "The Aether II includes the Phosphor mod! ❤ " + TextFormatting.GOLD +
@@ -42,7 +42,6 @@ public class PhosphorEvents {
                     "future optimization mods like this one through pledging to my Patreon. " + TextFormatting.YELLOW + TextFormatting.UNDERLINE + "Click this link to make a pledge!")
                     .setStyle(new Style().setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "https://www.patreon.com/jellysquid"))));
         }
-
 
         config.showPatreonMessage = false;
         config.saveConfig();
@@ -59,6 +58,8 @@ public class PhosphorEvents {
             return false;
         }
 
-        return CertificateHelper.getFingerprint(mod.getSigningCertificate()).equals("db341c083b1b8ce9160a769b569ef6737b3f4cdf");
+        String fingerprint = CertificateHelper.getFingerprint(mod.getSigningCertificate());
+
+        return fingerprint.equals("db341c083b1b8ce9160a769b569ef6737b3f4cdf");
     }
 }
