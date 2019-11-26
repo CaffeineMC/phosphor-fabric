@@ -1,186 +1,81 @@
-buildscript {
-    repositories {
-        jcenter()
-
-        maven { url = 'https://repo.spongepowered.org/maven' }
-        maven { url = 'http://files.minecraftforge.net/maven' }
-    }
-
-    dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
-        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
-    }
+plugins {
+	id 'fabric-loom' version '0.2.5-SNAPSHOT'
+	id 'maven-publish'
+	id "me.champeau.gradle.jmh" version "0.5.0"
 }
 
-apply plugin: 'net.minecraftforge.gradle.forge'
-apply plugin: 'org.spongepowered.mixin'
-apply plugin: 'maven-publish'
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
 
-group = "me.jellysquid.mods"
-
-if (System.getenv("BUILD_NUMBER") != null) {
-    version = "${minecraft_version}-${mod_version}+build${System.getenv("BUILD_NUMBER")}"
-} else {
-    version = "${minecraft_version}-${mod_version}-SNAPSHOT"
-}
-
-compileJava {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}
+archivesBaseName = project.archives_base_name
+version = project.mod_version
+group = project.maven_group
 
 minecraft {
-    version = "${minecraft_version}-${forge_version}"
-    runDir = "run"
-
-    mappings = forge_mappings
-
-    clientJvmArgs += "-Dfml.coreMods.load=me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin"
-    serverJvmArgs += "-Dfml.coreMods.load=me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin"
-
-    makeObfSourceJar = false
-}
-
-repositories {
-    maven { url = 'https://repo.spongepowered.org/maven' }
-}
-
-configurations {
-    shade
-    compile.extendsFrom shade
 }
 
 dependencies {
-    shade('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
-        transitive = false
-    }
+	//to change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}"
+	modCompile "net.fabricmc:fabric-loader:${project.loader_version}"
 }
 
-def coreModManifest = {
-    attributes "FMLAT": "phosphor_at.cfg"
-    attributes "Maven-Artifact": "${group}:${name}:${version}"
-    attributes "FMLCorePlugin": "me.jellysquid.mods.phosphor.core.PhosphorFMLLoadingPlugin"
-    attributes "TweakClass": "org.spongepowered.asm.launch.MixinTweaker"
-    attributes "TweakOrder": 0
-    attributes "FMLCorePluginContainsFMLMod": true
-    attributes "ForceLoadAsMod": true
+processResources {
+	inputs.property "version", project.version
+
+	from(sourceSets.main.resources.srcDirs) {
+		include "fabric.mod.json"
+
+		expand "version": project.version
+	}
+
+	from(sourceSets.main.resources.srcDirs) {
+		exclude "fabric.mod.json"
+	}
+}
+
+// ensure that the encoding is set to UTF-8, no matter what the system default is
+// this fixes some edge cases with special characters not displaying correctly
+// see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+tasks.withType(JavaCompile) {
+	options.encoding = "UTF-8"
+}
+
+// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+// if it is present.
+// If you remove this task, sources will not be generated.
+task sourcesJar(type: Jar, dependsOn: classes) {
+	classifier = "sources"
+	from sourceSets.main.allSource
 }
 
 jar {
-    classifier = 'universal'
-
-    manifest coreModManifest
-
-    from sourceSets.main.output
-
-    configurations.shade.each { dep ->
-        from(project.zipTree(dep)) {
-            rename 'LICENSE.txt', 'org/spongepowered/LICENSE.txt'
-
-            exclude 'META-INF/*.SF'
-            exclude 'META-INF/*.RSA'
-            exclude 'META-INF/*.MF'
-
-            exclude '**/*.html'
-        }
-    }
-
-
-    rename '(.+_at.cfg)', 'META-INF/$1'
+	from "LICENSE"
 }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-
-    manifest coreModManifest
-
-    from sourceSets.main.allSource
-}
-
-task deobfJar(type: Jar, dependsOn: reobfJar) {
-    classifier = 'dev'
-
-    manifest coreModManifest
-
-    from sourceSets.main.output
-}
-
-import net.minecraftforge.gradle.user.TaskExtractAnnotations
-
-task deobfJarExtractAnnotations(type: TaskExtractAnnotations, dependsOn: deobfJar) {
-    jar = deobfJar.archivePath
-}
-
-deobfJar.finalizedBy deobfJarExtractAnnotations
-
-processResources {
-    inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft.version
-
-    from(sourceSets.main.resources.srcDirs) {
-        include 'mcmod.info'
-
-        expand 'version': project.version, 'mcversion': project.minecraft.version
-    }
-
-    from(sourceSets.main.resources.srcDirs) {
-        exclude 'mcmod.info'
-    }
-}
-
-mixin {
-    add sourceSets.main, "mixins.phosphor.refmap.json"
-}
-
+// configure the maven publication
 publishing {
-    publications {
-        mod(MavenPublication) {
-            artifact deobfJar
-            artifact sourcesJar
+	publications {
+		mavenJava(MavenPublication) {
+			// add all the jars that should be included when publishing to maven
+			artifact(remapJar) {
+				builtBy remapJar
+			}
+			artifact(sourcesJar) {
+				builtBy remapSourcesJar
+			}
+		}
+	}
 
-            from components.java
-        }
-    }
-
-    repositories {
-        def mavenSecretsPath = System.getenv("MAVEN_SECRETS_FILE")
-
-        if (mavenSecretsPath != null) {
-            def mavenSecretsFile = file(mavenSecretsPath).newReader()
-            def mavenSecrets = new Properties()
-            mavenSecrets.load(mavenSecretsFile)
-
-            maven {
-                url = mavenSecrets.publishUrl
-
-                credentials {
-                    username = mavenSecrets.username
-                    password = mavenSecrets.password
-                }
-            }
-        }
-    }
+	// select the repositories you want to publish to
+	repositories {
+		// uncomment to publish to the local maven
+		// mavenLocal()
+	}
 }
 
-if (System.getenv("JARSIGN_SECRETS_FILE") != null) {
-    def secretsFile = file(System.getenv("JARSIGN_SECRETS_FILE"))
 
-    def secrets = new Properties()
-    secrets.load(secretsFile.newReader())
-
-    [jar, sourcesJar, deobfJar].each { jarTask ->
-        def task = task(jarTask.name + 'Sign', type: SignJar) {
-            keyStore = System.getenv("JARSIGN_KEYSTORE_FILE")
-            alias = secrets.alias
-            storePass = secrets.storePassword
-            keyPass = secrets.keyPassword
-
-            inputFile = jarTask.archivePath
-            outputFile = jarTask.archivePath
-        }
-
-        jarTask.finalizedBy task
-    }
+jmh {
+	duplicateClassesStrategy = 'warn'
 }
-
-build.dependsOn deobfJar, sourcesJar
