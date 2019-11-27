@@ -56,7 +56,7 @@ public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
             ChunkNibbleArray array = ((ExtendedLightStorage) this).bridge$getDataForChunk(data, chunk);
 
             if (array == null) {
-                posY &= ~16;
+                posY &= -16;
 
                 while (array == null) {
                     ++chunkY;

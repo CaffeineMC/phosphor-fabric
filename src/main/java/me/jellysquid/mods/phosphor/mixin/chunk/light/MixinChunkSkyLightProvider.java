@@ -72,16 +72,6 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int aY = BlockPos.unpackLongY(a);
         int aZ = BlockPos.unpackLongZ(a);
 
-        boolean sameXZ = aX == bX && aZ == bZ;
-
-        Direction dir;
-
-        if (a == Long.MAX_VALUE) {
-            dir = Direction.DOWN;
-        } else {
-            dir = PhosphorDirection.getVecDirection(bX - aX, bY - aY, bZ - aZ);
-        }
-
         BlockState bState = ((ExtendedMixinChunkLightProvider) this).getBlockStateForLighting(bX, bY, bZ);
 
         if (bState == null) {
@@ -90,8 +80,14 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
         int newLight = ((ExtendedMixinChunkLightProvider) this).getSubtractedLight(bState, bX, bY, bZ);
 
-        if (newLight >= 15) {
-            return 15;
+        boolean sameXZ = aX == bX && aZ == bZ;
+
+        Direction dir;
+
+        if (a == Long.MAX_VALUE) {
+            dir = Direction.DOWN;
+        } else {
+            dir = PhosphorDirection.getVecDirection(bX - aX, bY - aY, bZ - aZ);
         }
 
         if (dir != null) {

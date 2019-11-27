@@ -64,9 +64,9 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
 
         if (estate.hasSpecialLightingShape()) {
             if (estate.hasDynamicShape()) {
-                return estate.getStaticLightShape(dir);
-            } else {
                 return estate.getDynamicLightShape(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z), dir);
+            } else {
+                return estate.getStaticLightShape(dir);
             }
         } else {
             return VoxelShapes.empty();

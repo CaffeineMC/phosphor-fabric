@@ -21,7 +21,7 @@ public class PhosphorBlockStateCache {
 
         this.shapes = new VoxelShape[DIRECTIONS.length];
 
-        if (state.isOpaque()) {
+        if (!block.hasDynamicBounds() && state.isOpaque()) {
             VoxelShape shape = block.method_9571(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
 
             for (Direction dir : DIRECTIONS) {

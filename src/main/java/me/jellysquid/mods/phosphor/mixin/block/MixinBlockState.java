@@ -37,7 +37,7 @@ public abstract class MixinBlockState implements ExtendedBlockState {
 
     @Override
     public boolean hasDynamicShape() {
-        return this.phosphorBlockStateCache != null;
+        return this.phosphorBlockStateCache.shapes == null;
     }
 
     @Override
