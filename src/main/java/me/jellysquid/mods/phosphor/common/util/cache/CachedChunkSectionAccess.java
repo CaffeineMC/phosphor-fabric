@@ -22,14 +22,12 @@ public class CachedChunkSectionAccess extends AbstractCachedAccess {
         ChunkSection section = this.getCachedChunkSection(x, y, z);
 
         if (section == null) {
-            return null;
+            return Blocks.AIR.getDefaultState();
         }
 
         return section.getBlockState(x & 15, y & 15, z & 15);
     }
 
-    // The manual if-branches here are significantly faster than starting a for-loop and iterating over
-    // the array of cached entries.
     private ChunkSection getCachedChunkSection(int blockX, int blockY, int blockZ) {
         if (blockY < 0 || blockY >= 256) {
             return null;
