@@ -85,7 +85,7 @@ public abstract class MixinLevelPropagator implements ExtendedLevelPropagator {
     private byte put(Long2ByteFunction long2ByteFunction, long key, byte value) {
         byte ret = long2ByteFunction.put(key, value);
 
-        if (ret != (byte) -1) {
+        if (ret == (byte) -1) {
             LongSet set = this.idToLevelByChunk.computeIfAbsent(ChunkSectionPos.toChunkLong(key), unused -> new LongOpenHashSet());
             set.add(key);
         }
