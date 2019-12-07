@@ -96,7 +96,7 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
      * An extremely important optimization is made here in regards to adding items to the pending notification set. The
      * original implementation attempts to add the coordinate of every chunk which contains a neighboring block position
      * even though a huge number of loop iterations will simply map to block positions within the same updating chunk.
-     *
+     * <p>
      * Our implementation here avoids this by pre-calculating the min/max chunk coordinates so we can iterate over only
      * the relevant chunk positions once. This reduces what would always be 27 iterations to just 1-8 iterations.
      *

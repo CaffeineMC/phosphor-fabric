@@ -1,6 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedLightStorage;
+import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedMixinChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.util.PhosphorDirection;
 import net.minecraft.block.BlockState;
@@ -21,6 +21,7 @@ import org.spongepowered.asm.mixin.Shadow;
 
 import static net.minecraft.util.math.ChunkSectionPos.toChunkCoord;
 
+@SuppressWarnings("rawtypes")
 @Mixin(ChunkBlockLightProvider.class)
 public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<BlockLightStorage.Data, BlockLightStorage> {
     public MixinChunkBlockLightProvider(ChunkProvider chunkProvider_1, LightType lightType_1, BlockLightStorage lightStorage_1) {
@@ -30,7 +31,8 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
     @Shadow
     protected abstract int getLightSourceLuminance(long long_1);
 
-    @Shadow @Final
+    @Shadow
+    @Final
     private static Direction[] DIRECTIONS_BLOCKLIGHT;
 
     /**
@@ -40,12 +42,13 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
      * - Avoid unpacking coordinates twice for both the call to method_20479 and method_20710.
      * - Avoid the the specific usage of AtomicInteger, which has additional overhead for the atomic get/set operations.
      * - Avoid checking if the checked block is opaque twice.
-     *
+     * <p>
      * The rest of the implementation has been otherwise copied from vanilla, but is optimized to avoid constantly
      * (un)packing coordinates and to use an optimized direction lookup function.
      *
      * @author JellySquid
      */
+    @Override
     @Overwrite
     public int getPropagatedLevel(long a, long b, int level) {
         if (b == Long.MAX_VALUE) {
@@ -95,6 +98,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
      *
      * @author JellySquid
      */
+    @Override
     @Overwrite
     public void updateNeighborsRecursively(long longPos, int int_1, boolean boolean_1) {
         int x = BlockPos.unpackLongX(longPos);
@@ -110,7 +114,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
             long adjChunk = ChunkSectionPos.asLong(toChunkCoord(adjX), toChunkCoord(adjY), toChunkCoord(adjZ));
 
-            if ((chunk == adjChunk) || ((ExtendedLightStorage) this.lightStorage).bridge$hasChunk(adjChunk)) {
+            if ((chunk == adjChunk) || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(adjChunk)) {
                 this.updateRecursively(longPos, BlockPos.asLong(adjX, adjY, adjZ), int_1, boolean_1);
             }
         }

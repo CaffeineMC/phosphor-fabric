@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Shadow;
 /**
  * An optimized implementation of ChunkNibbleArray which uses bit-banging instead of a conditional to select
  * the right bit index of a nibble.
- *
+ * <p>
  * TODO: Is it if faster to always initialize this with a dummy array and then copy-on-write?
  */
 @Mixin(ChunkNibbleArray.class)
@@ -18,6 +18,7 @@ public abstract class MixinChunkNibbleArray {
 
     /**
      * Avoids an additional branch.
+     *
      * @author JellySquid
      */
     @Overwrite
@@ -36,6 +37,7 @@ public abstract class MixinChunkNibbleArray {
     /**
      * Avoids an additional branch.
      * TODO: Benchmark whether or not the ~ operator is still slower than a cached array in Java 9+
+     *
      * @author JellySquid
      */
     @Overwrite

@@ -48,12 +48,12 @@ public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
 
         long chunk = ChunkSectionPos.asLong(chunkX, chunkY, chunkZ);
 
-        SkyLightStorage.Data data = (SkyLightStorage.Data) ((ExtendedLightStorage) this).bridge$getStorageUncached();
+        SkyLightStorage.Data data = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getStorageUncached();
 
         int h = ((ExtendedSkyLightStorageData) (Object) data).bridge$heightMap().get(ChunkSectionPos.toLightStorageIndex(chunk));
 
         if (h != ((ExtendedSkyLightStorageData) (Object) data).bridge$defaultHeight() && chunkY < h) {
-            ChunkNibbleArray array = ((ExtendedLightStorage) this).bridge$getDataForChunk(data, chunk);
+            ChunkNibbleArray array = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getDataForChunk(data, chunk);
 
             if (array == null) {
                 posY &= -16;
@@ -67,7 +67,7 @@ public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
 
                     chunk = ChunkSectionPosHelper.updateYLong(chunk, chunkY);
                     posY += 16;
-                    array = ((ExtendedLightStorage) this).bridge$getDataForChunk(data, chunk);
+                    array = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getDataForChunk(data, chunk);
                 }
             }
 

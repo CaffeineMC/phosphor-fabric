@@ -1,6 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedLightStorage;
+import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedMixinChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
 import me.jellysquid.mods.phosphor.common.util.BlockPosHelper;
@@ -42,12 +42,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * - Avoid unpacking coordinates twice for both the call to method_20479 and method_20710.
      * - Avoid the the specific usage of AtomicInteger, which has additional overhead for the atomic get/set operations.
      * - Avoid checking if the checked block is opaque twice.
-     *
+     * <p>
      * The rest of the implementation has been otherwise copied from vanilla, but is optimized to avoid constantly
      * (un)packing coordinates and to use an optimized direction lookup function.
      *
      * @author JellySquid
      */
+    @Override
     @Overwrite
     public int getPropagatedLevel(long a, long b, int level) {
         if (b == Long.MAX_VALUE) {
@@ -128,13 +129,14 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * A few key optimizations are made here, in particular:
      * - The code avoids un-packing coordinates as much as possible and stores the results into local variables.
      * - When necessary, coordinate re-packing is reduced to the minimum number of operations. Most of them can be reduced
-     *     to only updating the Y-coordinate versus re-computing the entire integer.
+     * to only updating the Y-coordinate versus re-computing the entire integer.
      * - Coordinate re-packing is removed where unnecessary (such as when only comparing the Y-coordinate of two positions)
-     *
+     * <p>
      * This copies the vanilla implementation as close as possible.
      *
      * @author JellySquid
      */
+    @Override
     @Overwrite
     public void updateNeighborsRecursively(long longPos, int level, boolean flag) {
         int posX = BlockPos.unpackLongX(longPos);
@@ -149,7 +151,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
         if (toLocalCoord(posY) == 0) {
             while (((ExtendedSkyLightStorage) this.lightStorage).bridge$isAboveMinimumHeight(toChunkCoord(posY) - n - 1) &&
-                    !((ExtendedLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, toChunkCoord(posY + (-n - 1))))) {
+                    !((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, toChunkCoord(posY + (-n - 1))))) {
                 ++n;
             }
         }
@@ -157,13 +159,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int nY = posY - 1 - (n * 16);
         int nChunkY = toChunkCoord(nY);
 
-        if (chunkY == nChunkY || ((ExtendedLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, nChunkY))) {
+        if (chunkY == nChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, nChunkY))) {
             this.updateRecursively(longPos, BlockPosHelper.updateYLong(longPos, nY), level, flag);
         }
 
         int upChunkY = toChunkCoord(posY + 1);
 
-        if (chunkY == upChunkY || ((ExtendedLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, upChunkY))) {
+        if (chunkY == upChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, upChunkY))) {
             this.updateRecursively(longPos, BlockPosHelper.updateYLong(longPos, posY + 1), level, flag);
         }
 
@@ -184,7 +186,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
                     break;
                 }
 
-                if (((ExtendedLightStorage) this.lightStorage).bridge$hasChunk(adjChunkPos)) {
+                if (((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(adjChunkPos)) {
                     this.updateRecursively(longPos, BlockPos.asLong(adjPosX, adjPosY, adjPosZ), level, flag);
                 }
 

@@ -3,12 +3,7 @@ package me.jellysquid.mods.phosphor.common.chunk;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.WorldNibbleStorage;
 
-public interface ExtendedLightStorage<M extends WorldNibbleStorage<M>> {
-    /**
-     * Bridge method to LightStorage#hasChunk(long).
-     */
-    boolean bridge$hasChunk(long pos);
-
+public interface ExtendedLightStorage<M extends WorldNibbleStorage<M>> extends ExtendedGenericLightStorage {
     /**
      * Bridge method to LightStorage#getDataForChunk(M, long).
      */
