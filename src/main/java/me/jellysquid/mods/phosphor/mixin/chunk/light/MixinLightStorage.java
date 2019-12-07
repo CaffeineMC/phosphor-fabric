@@ -1,11 +1,14 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import me.jellysquid.mods.phosphor.common.chunk.ExtendedLevelPropagator;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedLightStorage;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.WorldNibbleStorage;
+import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightStorage;
 import org.spongepowered.asm.mixin.*;
 
@@ -186,5 +189,33 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
     @Override
     public M bridge$getStorageUncached() {
         return this.dataStorageUncached;
+    }
+
+    /**
+     * This uses a per-chunk cache to quickly iterate over all the entries belonging to a specified chunk rather than
+     * iterating over an entire block volume and testing each position one-by-one.
+     *
+     * @reason Significantly improved performance when unloading any number of chunks
+     * @author JellySquid
+     */
+    @Overwrite
+    public void removeChunkData(ChunkLightProvider<?, ?> provider, long pos) {
+        int x = ChunkSectionPos.unpackLongX(pos);
+        int y = ChunkSectionPos.unpackLongY(pos);
+        int z = ChunkSectionPos.unpackLongZ(pos);
+
+        LongSet set = ((ExtendedLevelPropagator) provider).removeIdToLevelByChunk(ChunkSectionPos.asLong(x, y, z));
+
+        if (set == null) {
+            return;
+        }
+
+        LongIterator it = set.iterator();
+
+        while (it.hasNext()) {
+            ((ExtendedLevelPropagator) provider).bridge$removeOnUnload(it.nextLong());
+        }
+
+        set.clear();
     }
 }
