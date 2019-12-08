@@ -54,7 +54,13 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
     // [VanillaCopy] method_20479
     @Override
     public int getSubtractedLight(BlockState state, int x, int y, int z) {
-        return state.getLightSubtracted(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z));
+        ExtendedBlockState estate = ((ExtendedBlockState) state);
+
+        if (estate.hasDynamicLightOpacity()) {
+            return estate.getDynamicLightOpacity(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z));
+        } else {
+            return estate.getStaticLightOpacity();
+        }
     }
 
     // [VanillaCopy] method_20479
@@ -62,8 +68,8 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
     public VoxelShape getVoxelShape(BlockState state, int x, int y, int z, Direction dir) {
         ExtendedBlockState estate = ((ExtendedBlockState) state);
 
-        if (estate.hasSpecialLightingShape()) {
-            if (estate.hasDynamicShape()) {
+        if (estate.hasSpecialLightShape()) {
+            if (estate.hasDynamicLightShape()) {
                 return estate.getDynamicLightShape(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z), dir);
             } else {
                 return estate.getStaticLightShape(dir);
@@ -77,10 +83,6 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
     @Override
     public VoxelShape getVoxelShape(int x, int y, int z, Direction dir) {
         BlockState state = this.cacher.getBlockState(x, y, z);
-
-        if (state == null) {
-            return VoxelShapes.fullCube();
-        }
 
         return this.getVoxelShape(state, x, y, z, dir);
     }

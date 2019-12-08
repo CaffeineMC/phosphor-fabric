@@ -9,12 +9,12 @@ public interface ExtendedBlockState {
     /**
      * @return True if the block state has a static shape, otherwise false if it doesn't.
      */
-    boolean hasDynamicShape();
+    boolean hasDynamicLightShape();
 
     /**
      * @return True if the block state has a special state it is represented by for lighting.
      */
-    boolean hasSpecialLightingShape();
+    boolean hasSpecialLightShape();
 
     /**
      * @return The cached VoxelShape which represents the light volume in the specified direction.
@@ -26,4 +26,20 @@ public interface ExtendedBlockState {
      * will not be cached.
      */
     VoxelShape getDynamicLightShape(BlockView view, BlockPos pos, Direction dir);
+
+    /**
+     * @return True if the block state dynamically adjusts its light opacity.
+     */
+    boolean hasDynamicLightOpacity();
+
+    /**
+     * @return The cached light opacity for this state.
+     */
+    int getStaticLightOpacity();
+
+    /**
+     * @return The dynamic light opacity for this state at the specified location in the world. This will not be
+     * cached.
+     */
+    int getDynamicLightOpacity(BlockView view, BlockPos pos);
 }

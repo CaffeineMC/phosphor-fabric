@@ -15,18 +15,21 @@ public class PhosphorBlockStateCache {
     private static final Direction[] DIRECTIONS = Direction.values();
 
     public final VoxelShape[] shapes;
+    public final int lightSubtracted;
 
     public PhosphorBlockStateCache(BlockState state) {
         Block block = state.getBlock();
 
         this.shapes = new VoxelShape[DIRECTIONS.length];
 
-        if (!block.hasDynamicBounds() && state.isOpaque()) {
+        if (state.isOpaque()) {
             VoxelShape shape = block.method_9571(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
 
             for (Direction dir : DIRECTIONS) {
                 this.shapes[dir.ordinal()] = VoxelShapes.method_16344(shape, dir);
             }
         }
+
+        this.lightSubtracted = block.getLightSubtracted(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
     }
 }
