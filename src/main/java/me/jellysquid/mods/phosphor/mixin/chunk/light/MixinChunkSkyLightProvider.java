@@ -6,7 +6,6 @@ import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
 import me.jellysquid.mods.phosphor.common.util.BlockPosHelper;
 import me.jellysquid.mods.phosphor.common.util.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.PhosphorDirection;
-import me.jellysquid.mods.phosphor.common.util.VoxelShapesHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -94,7 +93,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             VoxelShape aShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(aX, aY, aZ, dir);
             VoxelShape bShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
 
-            if (VoxelShapesHelper.method_20713_fast(aShape, bShape)) {
+            if (VoxelShapes.method_20713(aShape, bShape)) {
                 return 15;
             }
         } else {
