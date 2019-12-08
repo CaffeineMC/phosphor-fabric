@@ -3,12 +3,12 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedMixinChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.util.PhosphorDirection;
+import me.jellysquid.mods.phosphor.common.util.VoxelShapesHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.light.BlockLightStorage;
@@ -85,7 +85,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             VoxelShape bShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
             VoxelShape aShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(aX, aY, aZ, dir);
 
-            if (!VoxelShapes.method_20713(aShape, bShape)) {
+            if (!VoxelShapesHelper.method_20713_fast(aShape, bShape)) {
                 return level + Math.max(1, newLevel);
             }
         }

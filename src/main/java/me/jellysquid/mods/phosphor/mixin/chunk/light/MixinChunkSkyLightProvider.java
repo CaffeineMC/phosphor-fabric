@@ -95,7 +95,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             VoxelShape aShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(aX, aY, aZ, dir);
             VoxelShape bShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
 
-            if (VoxelShapes.method_20713(aShape, bShape)) {
+            if (VoxelShapesHelper.method_20713_fast(aShape, bShape)) {
                 return 15;
             }
         } else {
@@ -107,13 +107,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
             VoxelShape aShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(aX, aY, aZ, Direction.DOWN);
 
-            if (VoxelShapes.method_20713(aShape, VoxelShapes.empty())) {
+            if (aShape == VoxelShapes.empty()) {
                 return 15;
             }
 
             VoxelShape bShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
 
-            if (VoxelShapes.method_20713(VoxelShapes.empty(), bShape)) {
+            if (bShape == VoxelShapes.empty()) {
                 return 15;
             }
         }
