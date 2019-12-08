@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.block;
 
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedBlockState;
 import me.jellysquid.mods.phosphor.common.chunk.PhosphorBlockStateCache;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -27,21 +28,27 @@ public abstract class MixinBlockState implements ExtendedBlockState {
     @Shadow
     public abstract boolean hasSidedTransparency();
 
+    @Shadow
+    public abstract Block getBlock();
+
     private PhosphorBlockStateCache phosphorBlockStateCache;
 
     @Inject(method = "initShapeCache", at = @At(value = "RETURN"))
     private void onConstructed(CallbackInfo ci) {
-        this.phosphorBlockStateCache = new PhosphorBlockStateCache(((BlockState) (Object) this));
+        if (!this.getBlock().hasDynamicBounds()) {
+            this.phosphorBlockStateCache = new PhosphorBlockStateCache(((BlockState) (Object) this));
+        }
+
         this.shouldFetchCullState = this.isOpaque() && this.hasSidedTransparency();
     }
 
     @Override
-    public boolean hasDynamicShape() {
+    public boolean hasDynamicLightShape() {
         return this.phosphorBlockStateCache.shapes == null;
     }
 
     @Override
-    public boolean hasSpecialLightingShape() {
+    public boolean hasSpecialLightShape() {
         return this.shouldFetchCullState;
     }
 
@@ -53,5 +60,21 @@ public abstract class MixinBlockState implements ExtendedBlockState {
     @Override
     public VoxelShape getDynamicLightShape(BlockView view, BlockPos pos, Direction dir) {
         return VoxelShapes.method_16344(this.method_11615(view, pos), dir);
+    }
+
+
+    @Override
+    public boolean hasDynamicLightOpacity() {
+        return this.phosphorBlockStateCache == null;
+    }
+
+    @Override
+    public int getDynamicLightOpacity(BlockView view, BlockPos pos) {
+        return this.getBlock().getLightSubtracted((BlockState) (Object) this, view, pos);
+    }
+
+    @Override
+    public int getStaticLightOpacity() {
+        return this.phosphorBlockStateCache.lightSubtracted;
     }
 }
