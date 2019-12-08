@@ -6,6 +6,7 @@ import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
 import me.jellysquid.mods.phosphor.common.util.BlockPosHelper;
 import me.jellysquid.mods.phosphor.common.util.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.PhosphorDirection;
+import me.jellysquid.mods.phosphor.common.util.VoxelShapesHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -69,17 +70,15 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int bY = BlockPos.unpackLongY(b);
         int bZ = BlockPos.unpackLongZ(b);
 
-        int aX = BlockPos.unpackLongX(a);
-        int aY = BlockPos.unpackLongY(a);
-        int aZ = BlockPos.unpackLongZ(a);
-
         BlockState bState = ((ExtendedMixinChunkLightProvider) this).getBlockStateForLighting(bX, bY, bZ);
 
         if (bState == null) {
             return 15;
         }
 
-        int newLight = ((ExtendedMixinChunkLightProvider) this).getSubtractedLight(bState, bX, bY, bZ);
+        int aX = BlockPos.unpackLongX(a);
+        int aY = BlockPos.unpackLongY(a);
+        int aZ = BlockPos.unpackLongZ(a);
 
         boolean sameXZ = aX == bX && aZ == bZ;
 
@@ -117,6 +116,8 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
                 return 15;
             }
         }
+
+        int newLight = ((ExtendedMixinChunkLightProvider) this).getSubtractedLight(bState, bX, bY, bZ);
 
         if ((a == Long.MAX_VALUE || sameXZ && aY > bY) && level == 0 && newLight == 0) {
             return 0;
