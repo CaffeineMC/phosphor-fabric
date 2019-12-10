@@ -61,7 +61,7 @@ public abstract class MixinLevelPropagator  {
         this.minLevel = min;
 
         for (int level = prevMin + 1; level < min; ++level) {
-            if (!this.pendingUpdateSet[level].isEmpty()) {
+            if (!(this.pendingUpdateSet[level].queueReadIdx >= this.pendingUpdateSet[level].queueWriteIdx)) {
                 this.minLevel = level;
 
                 break;
@@ -98,7 +98,7 @@ public abstract class MixinLevelPropagator  {
 
         this.pendingUpdateSet[level].remove(id);
 
-        if (this.pendingUpdateSet[level].isEmpty() && this.minLevel == level) {
+        if (this.pendingUpdateSet[level].queueReadIdx >= this.pendingUpdateSet[level].queueWriteIdx && this.minLevel == level) {
             this.updateMinLevel(maxLevel);
         }
     }
@@ -129,26 +129,20 @@ public abstract class MixinLevelPropagator  {
         while (this.minLevel < this.levelCount && maxSteps > 0) {
             PendingLevelUpdateTracker set = this.pendingUpdateSet[this.minLevel];
 
-            while (set.queueReadIdx < set.queueWriteIdx && maxSteps > 0) {
+            int qIdx = set.queueReadIdx;
+
+            while (qIdx < set.queueWriteIdx && maxSteps > 0) {
                 maxSteps--;
 
-                long pos = set.queue[set.queueReadIdx];
+                long pos = set.queue[qIdx++];
 
                 if (pos == Integer.MIN_VALUE) {
-                    set.queueReadIdx++;
-
                     continue;
                 }
 
-                boolean skip = !set.consume(pos, set.queueReadIdx);
-
-                if (set.isEmpty()) {
-                    this.updateMinLevel(this.levelCount);
-                }
+                boolean skip = !set.consume(pos, qIdx - 1);
 
                 if (skip) {
-                    set.queueReadIdx++;
-
                     continue;
                 }
 
@@ -163,11 +157,13 @@ public abstract class MixinLevelPropagator  {
                     this.setLevel(pos, this.levelCount - 1);
                     this.updateNeighborsRecursively(pos, from, false);
                 }
-
-                set.queueReadIdx++;
             }
 
-            if (set.isEmpty()) {
+            set.queueReadIdx = qIdx;
+
+            if (set.queueReadIdx >= set.queueWriteIdx) {
+                this.updateMinLevel(this.levelCount);
+
                 set.clear();
             }
         }
