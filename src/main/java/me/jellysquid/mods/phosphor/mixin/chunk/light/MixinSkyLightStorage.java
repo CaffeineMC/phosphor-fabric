@@ -15,19 +15,19 @@ import org.spongepowered.asm.mixin.Shadow;
 @Mixin(SkyLightStorage.class)
 public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
     @Shadow
-    protected abstract boolean method_15565(long long_1);
+    protected abstract boolean method_15565(long l);
 
     @Shadow
-    protected abstract boolean isAboveMinimumHeight(int int_1);
+    protected abstract boolean isAboveMinimumHeight(int blockY);
 
     @Override
-    public boolean bridge$method_15565(long long_1) {
-        return this.method_15565(long_1);
+    public boolean bridge$method_15565(long l) {
+        return this.method_15565(l);
     }
 
     @Override
-    public boolean bridge$isAboveMinimumHeight(int y) {
-        return this.isAboveMinimumHeight(y);
+    public boolean bridge$isAboveMinimumHeight(int blockY) {
+        return this.isAboveMinimumHeight(blockY);
     }
 
     /**

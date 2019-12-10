@@ -24,12 +24,12 @@ import static net.minecraft.util.math.ChunkSectionPos.toChunkCoord;
 @SuppressWarnings("rawtypes")
 @Mixin(ChunkBlockLightProvider.class)
 public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<BlockLightStorage.Data, BlockLightStorage> {
-    public MixinChunkBlockLightProvider(ChunkProvider chunkProvider_1, LightType lightType_1, BlockLightStorage lightStorage_1) {
-        super(chunkProvider_1, lightType_1, lightStorage_1);
+    public MixinChunkBlockLightProvider(ChunkProvider chunkProvider, LightType type, BlockLightStorage lightStorage) {
+        super(chunkProvider, type, lightStorage);
     }
 
     @Shadow
-    protected abstract int getLightSourceLuminance(long long_1);
+    protected abstract int getLightSourceLuminance(long blockPos);
 
     @Shadow
     @Final
@@ -50,22 +50,22 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
      */
     @Override
     @Overwrite
-    public int getPropagatedLevel(long a, long b, int level) {
-        if (b == Long.MAX_VALUE) {
+    public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
+        if (toId == Long.MAX_VALUE) {
             return 15;
-        } else if (a == Long.MAX_VALUE) {
-            return level + 15 - this.getLightSourceLuminance(b);
-        } else if (level >= 15) {
-            return level;
+        } else if (fromId == Long.MAX_VALUE) {
+            return currentLevel + 15 - this.getLightSourceLuminance(toId);
+        } else if (currentLevel >= 15) {
+            return currentLevel;
         }
 
-        int bX = BlockPos.unpackLongX(b);
-        int bY = BlockPos.unpackLongY(b);
-        int bZ = BlockPos.unpackLongZ(b);
+        int bX = BlockPos.unpackLongX(toId);
+        int bY = BlockPos.unpackLongY(toId);
+        int bZ = BlockPos.unpackLongZ(toId);
 
-        int aX = BlockPos.unpackLongX(a);
-        int aY = BlockPos.unpackLongY(a);
-        int aZ = BlockPos.unpackLongZ(a);
+        int aX = BlockPos.unpackLongX(fromId);
+        int aY = BlockPos.unpackLongY(fromId);
+        int aZ = BlockPos.unpackLongZ(fromId);
 
         Direction dir = DirectionHelper.getVecDirection(bX - aX, bY - aY, bZ - aZ);
 
@@ -86,7 +86,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             VoxelShape aShape = ((ExtendedChunkLightProvider) this).getVoxelShape(aX, aY, aZ, dir);
 
             if (!VoxelShapes.method_20713(aShape, bShape)) {
-                return level + Math.max(1, newLevel);
+                return currentLevel + Math.max(1, newLevel);
             }
         }
 
@@ -100,10 +100,10 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
      */
     @Override
     @Overwrite
-    public void updateNeighborsRecursively(long longPos, int int_1, boolean boolean_1) {
-        int x = BlockPos.unpackLongX(longPos);
-        int y = BlockPos.unpackLongY(longPos);
-        int z = BlockPos.unpackLongZ(longPos);
+    public void updateNeighborsRecursively(long id, int targetLevel, boolean mergeAsMin) {
+        int x = BlockPos.unpackLongX(id);
+        int y = BlockPos.unpackLongY(id);
+        int z = BlockPos.unpackLongZ(id);
 
         long chunk = ChunkSectionPos.asLong(toChunkCoord(x), toChunkCoord(y), toChunkCoord(z));
 
@@ -115,7 +115,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             long adjChunk = ChunkSectionPos.asLong(toChunkCoord(adjX), toChunkCoord(adjY), toChunkCoord(adjZ));
 
             if ((chunk == adjChunk) || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(adjChunk)) {
-                this.updateRecursively(longPos, BlockPos.asLong(adjX, adjY, adjZ), int_1, boolean_1);
+                this.updateRecursively(id, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
             }
         }
     }

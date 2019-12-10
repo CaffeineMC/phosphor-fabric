@@ -26,8 +26,8 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
     @Final
     private static Direction[] HORIZONTAL_DIRECTIONS;
 
-    public MixinChunkSkyLightProvider(ChunkProvider chunkProvider_1, LightType lightType_1, SkyLightStorage lightStorage_1) {
-        super(chunkProvider_1, lightType_1, lightStorage_1);
+    public MixinChunkSkyLightProvider(ChunkProvider chunkProvider, LightType type, SkyLightStorage lightStorage) {
+        super(chunkProvider, type, lightStorage);
     }
 
     /**

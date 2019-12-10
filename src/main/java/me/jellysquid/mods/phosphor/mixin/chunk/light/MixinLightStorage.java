@@ -21,7 +21,7 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
     protected LongSet field_15802;
 
     @Shadow
-    protected abstract ChunkNibbleArray getDataForChunk(long long_1, boolean boolean_1);
+    protected abstract ChunkNibbleArray getDataForChunk(long chunkPos, boolean cached);
 
     @Mutable
     @Shadow
@@ -29,10 +29,10 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
     protected LongSet toNotify;
 
     @Shadow
-    protected abstract boolean hasChunk(long pos);
+    protected abstract boolean hasChunk(long chunkPos);
 
     @Shadow
-    protected abstract int getLevel(long long_1);
+    protected abstract int getLevel(long id);
 
     @Mutable
     @Shadow
@@ -55,10 +55,10 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
     private LongSet toRemove;
 
     @Shadow
-    protected abstract void method_15523(long long_1);
+    protected abstract void method_15523(long blockPos);
 
     @Shadow
-    protected abstract ChunkNibbleArray getDataForChunk(long long_1);
+    protected abstract ChunkNibbleArray getDataForChunk(long chunkPos);
 
     @SuppressWarnings("unused")
     @Shadow
@@ -77,10 +77,10 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
      * @author JellySquid
      */
     @Overwrite
-    public int get(long pos) {
-        int x = BlockPos.unpackLongX(pos);
-        int y = BlockPos.unpackLongY(pos);
-        int z = BlockPos.unpackLongZ(pos);
+    public int get(long blockPos) {
+        int x = BlockPos.unpackLongX(blockPos);
+        int y = BlockPos.unpackLongY(blockPos);
+        int z = BlockPos.unpackLongZ(blockPos);
 
         long chunk = ChunkSectionPos.asLong(ChunkSectionPos.toChunkCoord(x), ChunkSectionPos.toChunkCoord(y), ChunkSectionPos.toChunkCoord(z));
 
@@ -100,10 +100,10 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
      * @author JellySquid
      */
     @Overwrite
-    public void set(long pos, int level) {
-        int x = BlockPos.unpackLongX(pos);
-        int y = BlockPos.unpackLongY(pos);
-        int z = BlockPos.unpackLongZ(pos);
+    public void set(long blockPos, int value) {
+        int x = BlockPos.unpackLongX(blockPos);
+        int y = BlockPos.unpackLongY(blockPos);
+        int z = BlockPos.unpackLongZ(blockPos);
 
         long chunkPos = ChunkSectionPos.asLong(x >> 4, y >> 4, z >> 4);
 
@@ -112,7 +112,7 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
         }
 
         ChunkNibbleArray nibble = this.getDataForChunk(chunkPos, true);
-        nibble.set(x & 15, y & 15, z & 15, level);
+        nibble.set(x & 15, y & 15, z & 15, value);
 
         for (int z2 = (z - 1) >> 4; z2 <= (z + 1) >> 4; ++z2) {
             for (int x2 = (x - 1) >> 4; x2 <= (x + 1) >> 4; ++x2) {
@@ -130,29 +130,29 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
      * @author JellySquid
      */
     @Overwrite
-    public void setLevel(long pos, int level) {
-        int prevLevel = this.getLevel(pos);
+    public void setLevel(long id, int level) {
+        int prevLevel = this.getLevel(id);
 
         if (prevLevel != 0 && level == 0) {
-            this.field_15808.add(pos);
-            this.field_15804.remove(pos);
+            this.field_15808.add(id);
+            this.field_15804.remove(id);
         }
 
         if (prevLevel == 0 && level != 0) {
-            this.field_15808.remove(pos);
-            this.field_15797.remove(pos);
+            this.field_15808.remove(id);
+            this.field_15797.remove(id);
         }
 
         if (prevLevel >= 2 && level != 2) {
-            if (!this.toRemove.remove(pos)) {
-                this.dataStorage.addForChunk(pos, this.getDataForChunk(pos));
+            if (!this.toRemove.remove(id)) {
+                this.dataStorage.addForChunk(id, this.getDataForChunk(id));
 
-                this.field_15802.add(pos);
-                this.method_15523(pos);
+                this.field_15802.add(id);
+                this.method_15523(id);
 
-                int x = BlockPos.unpackLongX(pos);
-                int y = BlockPos.unpackLongY(pos);
-                int z = BlockPos.unpackLongZ(pos);
+                int x = BlockPos.unpackLongX(id);
+                int y = BlockPos.unpackLongY(id);
+                int z = BlockPos.unpackLongZ(id);
 
                 for (int z2 = (z - 1) >> 4; z2 <= (z + 1) >> 4; ++z2) {
                     for (int x2 = (x - 1) >> 4; x2 <= (x + 1) >> 4; ++x2) {
@@ -167,20 +167,20 @@ public abstract class MixinLightStorage<M extends WorldNibbleStorage<M>> impleme
         }
 
         if (prevLevel != 2 && level >= 2) {
-            this.toRemove.add(pos);
+            this.toRemove.add(id);
             this.hasLightUpdates = !this.toRemove.isEmpty();
         }
     }
 
 
     @Override
-    public boolean bridge$hasChunk(long pos) {
-        return this.hasChunk(pos);
+    public boolean bridge$hasChunk(long chunkPos) {
+        return this.hasChunk(chunkPos);
     }
 
     @Override
-    public ChunkNibbleArray bridge$getDataForChunk(M data, long chunk) {
-        return this.getDataForChunk(data, chunk);
+    public ChunkNibbleArray bridge$getDataForChunk(M data, long chunkPos) {
+        return this.getDataForChunk(data, chunkPos);
     }
 
     @Override

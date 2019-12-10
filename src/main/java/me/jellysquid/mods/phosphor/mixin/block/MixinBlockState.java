@@ -20,7 +20,7 @@ public abstract class MixinBlockState implements ExtendedBlockState {
     private boolean shouldFetchCullState;
 
     @Shadow
-    public abstract VoxelShape method_11615(BlockView blockView_1, BlockPos blockPos_1);
+    public abstract VoxelShape method_11615(BlockView view, BlockPos pos);
 
     @Shadow
     public abstract boolean isOpaque();

@@ -4,7 +4,7 @@ public interface ExtendedSkyLightStorage {
     /**
      * Bridge method to SkyLightStorage#method_15565(long).
      */
-    boolean bridge$method_15565(long long_1);
+    boolean bridge$method_15565(long l);
 
     /**
      * Bridge method to SkyLightStorage#isAboveMinimumHeight(int).
