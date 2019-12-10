@@ -5,14 +5,12 @@ import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.util.cache.LightEngineBlockAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.WorldNibbleStorage;
-import net.minecraft.world.chunk.light.ChunkBlockLightProvider;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightStorage;
 import org.spongepowered.asm.mixin.Final;
@@ -91,16 +89,5 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
         }
 
         return this.getVoxelShape(state, x, y, z, dir);
-    }
-
-    /**
-     * @author JellySquid
-     */
-    @Inject(method = "method_15512", at = @At("HEAD"), cancellable = true)
-    private void method_15512(ChunkPos chunkPos, boolean bl, CallbackInfo ci) {
-        // noinspection ConstantConditions
-        if (((Object) this) instanceof ChunkBlockLightProvider) {
-            ci.cancel();
-        }
     }
 }
