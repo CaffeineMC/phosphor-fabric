@@ -4,7 +4,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 
-public interface ExtendedMixinChunkLightProvider {
+public interface ExtendedChunkLightProvider {
     /**
      * Returns the BlockState which represents the block at the specified coordinates in the world. This may return
      * a different BlockState than what actually exists at the coordinates (such as if it is out of bounds), but will
@@ -19,14 +19,14 @@ public interface ExtendedMixinChunkLightProvider {
 
     /**
      * Returns the VoxelShape of a block for lighting without making a second call to
-     * {@link ExtendedMixinChunkLightProvider#getBlockStateForLighting(int, int, int)}.
+     * {@link ExtendedChunkLightProvider#getBlockStateForLighting(int, int, int)}.
      */
     VoxelShape getVoxelShape(BlockState state, int x, int y, int z, Direction dir);
 
 
     /**
      * Returns the VoxelShape of a block for lighting. This will call
-     * {@link ExtendedMixinChunkLightProvider#getBlockStateForLighting(int, int, int)} to retrieve the block state
+     * {@link ExtendedChunkLightProvider#getBlockStateForLighting(int, int, int)} to retrieve the block state
      * at the specified coordinates. You should prefer the variant of this method which consumes a BlockState if you
      * already have obtained it prior as it will be faster.
      */

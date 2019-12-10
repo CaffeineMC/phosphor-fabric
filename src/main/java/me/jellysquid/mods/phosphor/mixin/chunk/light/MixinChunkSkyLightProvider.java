@@ -1,10 +1,8 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
+import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedMixinChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
-import me.jellysquid.mods.phosphor.common.util.BlockPosHelper;
-import me.jellysquid.mods.phosphor.common.util.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.PhosphorDirection;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -21,9 +19,6 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-
-import static net.minecraft.util.math.ChunkSectionPos.toChunkCoord;
-import static net.minecraft.util.math.ChunkSectionPos.toLocalCoord;
 
 @Mixin(ChunkSkyLightProvider.class)
 public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage> {
@@ -50,78 +45,83 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      */
     @Override
     @Overwrite
-    public int getPropagatedLevel(long a, long b, int level) {
-        if (b == Long.MAX_VALUE) {
+    public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
+        if (toId == Long.MAX_VALUE) {
             return 15;
         }
 
-        if (a == Long.MAX_VALUE) {
-            if (!((ExtendedSkyLightStorage) this.lightStorage).bridge$method_15565(b)) {
+        if (fromId == Long.MAX_VALUE) {
+            if (((ExtendedSkyLightStorage) this.lightStorage).bridge$method_15565(toId)) {
+                currentLevel = 0;
+            } else {
                 return 15;
             }
-
-            level = 0;
-        } else if (level >= 15) {
-            return level;
         }
 
-        int bX = BlockPos.unpackLongX(b);
-        int bY = BlockPos.unpackLongY(b);
-        int bZ = BlockPos.unpackLongZ(b);
+        if (currentLevel >= 15) {
+            return currentLevel;
+        }
 
-        BlockState bState = ((ExtendedMixinChunkLightProvider) this).getBlockStateForLighting(bX, bY, bZ);
+        int toX = BlockPos.unpackLongX(toId);
+        int toY = BlockPos.unpackLongY(toId);
+        int toZ = BlockPos.unpackLongZ(toId);
 
-        if (bState == null) {
+        BlockState toState = ((ExtendedChunkLightProvider) this).getBlockStateForLighting(toX, toY, toZ);
+
+        if (toState == null) {
             return 15;
         }
 
-        int aX = BlockPos.unpackLongX(a);
-        int aY = BlockPos.unpackLongY(a);
-        int aZ = BlockPos.unpackLongZ(a);
+        int fromX = BlockPos.unpackLongX(fromId);
+        int fromY = BlockPos.unpackLongY(fromId);
+        int fromZ = BlockPos.unpackLongZ(fromId);
 
-        boolean sameXZ = aX == bX && aZ == bZ;
+        boolean verticalOnly = fromX == toX && fromZ == toZ;
 
         Direction dir;
 
-        if (a == Long.MAX_VALUE) {
+        if (fromId == Long.MAX_VALUE) {
             dir = Direction.DOWN;
         } else {
-            dir = PhosphorDirection.getVecDirection(bX - aX, bY - aY, bZ - aZ);
+            dir = PhosphorDirection.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
         }
 
         if (dir != null) {
-            VoxelShape aShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(aX, aY, aZ, dir);
-            VoxelShape bShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
+            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getVoxelShape(toState, toX, toY, toZ, dir.getOpposite());
 
-            if (VoxelShapes.method_20713(aShape, bShape)) {
-                return 15;
+            if (toShape != VoxelShapes.fullCube()) {
+                VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getVoxelShape(fromX, fromY, fromZ, dir);
+
+                if (VoxelShapes.method_20713(fromShape, toShape)) {
+                    return 15;
+                }
             }
         } else {
-            dir = PhosphorDirection.getVecDirection(bX - aX, sameXZ ? -1 : 0, bZ - aZ);
+            Direction altDir = Direction.fromVector(toX - fromX, verticalOnly ? -1 : 0, toZ - fromZ);
 
-            if (dir == null) {
+            if (altDir == null) {
                 return 15;
             }
 
-            VoxelShape aShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(aX, aY, aZ, Direction.DOWN);
+            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getVoxelShape(toState, toX, toY, toZ, altDir.getOpposite());
 
-            if (aShape == VoxelShapes.empty()) {
+            if (VoxelShapes.method_20713(VoxelShapes.empty(), toShape)) {
                 return 15;
             }
 
-            VoxelShape bShape = ((ExtendedMixinChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
+            VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getVoxelShape(fromX, fromY, fromZ, Direction.DOWN);
 
-            if (bShape == VoxelShapes.empty()) {
+            if (VoxelShapes.method_20713(fromShape, VoxelShapes.empty())) {
                 return 15;
             }
         }
 
-        int newLight = ((ExtendedMixinChunkLightProvider) this).getSubtractedLight(bState, bX, bY, bZ);
+        int out = ((ExtendedChunkLightProvider) this).getSubtractedLight(toState, toX, toY, toZ);
 
-        if ((a == Long.MAX_VALUE || sameXZ && aY > bY) && level == 0 && newLight == 0) {
+        if ((fromId == Long.MAX_VALUE || verticalOnly && fromY > toY) && currentLevel == 0 && out == 0) {
             return 0;
         } else {
-            return level + Math.max(1, newLight);
+            return currentLevel + Math.max(1, out);
         }
     }
 
@@ -138,61 +138,56 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      */
     @Override
     @Overwrite
-    public void updateNeighborsRecursively(long longPos, int level, boolean flag) {
-        int posX = BlockPos.unpackLongX(longPos);
-        int posY = BlockPos.unpackLongY(longPos);
-        int posZ = BlockPos.unpackLongZ(longPos);
+    public void updateNeighborsRecursively(long id, int targetLevel, boolean mergeAsMin) {
+        long chunkId = ChunkSectionPos.toChunkLong(id);
 
-        int chunkY = toChunkCoord(posY);
-
-        long chunk = ChunkSectionPos.asLong(toChunkCoord(posX), chunkY, toChunkCoord(posZ));
+        int y = BlockPos.unpackLongY(id);
+        int localY = ChunkSectionPos.toLocalCoord(y);
+        int chunkY = ChunkSectionPos.toChunkCoord(y);
 
         int n = 0;
 
-        if (toLocalCoord(posY) == 0) {
-            while (((ExtendedSkyLightStorage) this.lightStorage).bridge$isAboveMinimumHeight(toChunkCoord(posY) - n - 1) &&
-                    !((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, toChunkCoord(posY + (-n - 1))))) {
+        if (localY == 0) {
+            while (!((ExtendedGenericLightStorage)this.lightStorage).bridge$hasChunk(ChunkSectionPos.offsetPacked(chunkId, 0, -n - 1, 0))
+                    && ((ExtendedSkyLightStorage)this.lightStorage).bridge$isAboveMinimumHeight(chunkY - n - 1)) {
                 ++n;
             }
         }
 
-        int nY = posY - 1 - (n * 16);
-        int nChunkY = toChunkCoord(nY);
+        long nId = BlockPos.add(id, 0, -1 - n * 16, 0);
+        long nChunkId = ChunkSectionPos.toChunkLong(nId);
 
-        if (chunkY == nChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, nChunkY))) {
-            this.updateRecursively(longPos, BlockPosHelper.updateYLong(longPos, nY), level, flag);
+        if (chunkId == nChunkId || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(nChunkId)) {
+            this.updateRecursively(id, nId, targetLevel, mergeAsMin);
         }
 
-        int upChunkY = toChunkCoord(posY + 1);
+        long aboveId = BlockPos.offset(id, Direction.UP);
+        long aboveChunkId = ChunkSectionPos.toChunkLong(aboveId);
 
-        if (chunkY == upChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunk, upChunkY))) {
-            this.updateRecursively(longPos, BlockPosHelper.updateYLong(longPos, posY + 1), level, flag);
+        if (chunkId == aboveChunkId || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(aboveChunkId)) {
+            this.updateRecursively(id, aboveId, targetLevel, mergeAsMin);
         }
 
         for (Direction dir : HORIZONTAL_DIRECTIONS) {
-            int k = 0;
-
-            int adjPosX = posX + dir.getOffsetX();
-            int adjPosZ = posZ + dir.getOffsetZ();
+            int offsetY = 0;
 
             while (true) {
-                int adjPosY = posY - k;
+                long offsetId = BlockPos.add(id, dir.getOffsetX(), -offsetY, dir.getOffsetZ());
+                long offsetChunkId = ChunkSectionPos.toChunkLong(offsetId);
 
-                long adjChunkPos = ChunkSectionPos.asLong(toChunkCoord(adjPosX), toChunkCoord(adjPosY), toChunkCoord(adjPosZ));
-
-                if (adjChunkPos == chunk) {
-                    this.updateRecursively(longPos, BlockPos.asLong(adjPosX, adjPosY, adjPosZ), level, flag);
+                if (chunkId == offsetChunkId) {
+                    this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
 
                     break;
                 }
 
-                if (((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(adjChunkPos)) {
-                    this.updateRecursively(longPos, BlockPos.asLong(adjPosX, adjPosY, adjPosZ), level, flag);
+                if (((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(offsetChunkId)) {
+                    this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
                 }
 
-                ++k;
+                ++offsetY;
 
-                if (k > n * 16) {
+                if (offsetY > n * 16) {
                     break;
                 }
             }
