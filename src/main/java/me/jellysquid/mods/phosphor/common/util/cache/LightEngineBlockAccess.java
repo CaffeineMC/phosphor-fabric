@@ -9,7 +9,7 @@ import net.minecraft.world.chunk.ChunkSection;
 
 import java.util.Arrays;
 
-public class CachedChunkSectionAccess {
+public class LightEngineBlockAccess {
     private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
 
     private final ChunkProvider chunkProvider;
@@ -17,7 +17,7 @@ public class CachedChunkSectionAccess {
     private final long[] cachedCoords = new long[2];
     private final ChunkSection[][] cachedSectionArrays = new ChunkSection[2][];
 
-    public CachedChunkSectionAccess(ChunkProvider provider) {
+    public LightEngineBlockAccess(ChunkProvider provider) {
         this.chunkProvider = provider;
     }
 

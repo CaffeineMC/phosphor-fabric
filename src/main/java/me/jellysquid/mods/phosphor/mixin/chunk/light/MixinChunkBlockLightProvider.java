@@ -2,7 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
-import me.jellysquid.mods.phosphor.common.util.PhosphorDirection;
+import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -67,7 +67,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
         int aY = BlockPos.unpackLongY(a);
         int aZ = BlockPos.unpackLongZ(a);
 
-        Direction dir = PhosphorDirection.getVecDirection(bX - aX, bY - aY, bZ - aZ);
+        Direction dir = DirectionHelper.getVecDirection(bX - aX, bY - aY, bZ - aZ);
 
         if (dir != null) {
             BlockState bState = ((ExtendedChunkLightProvider) this).getBlockStateForLighting(bX, bY, bZ);

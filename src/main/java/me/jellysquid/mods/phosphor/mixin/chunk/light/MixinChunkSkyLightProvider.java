@@ -3,7 +3,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
-import me.jellysquid.mods.phosphor.common.util.PhosphorDirection;
+import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -83,7 +83,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         if (fromId == Long.MAX_VALUE) {
             dir = Direction.DOWN;
         } else {
-            dir = PhosphorDirection.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
+            dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
         }
 
         if (dir != null) {

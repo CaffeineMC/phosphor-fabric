@@ -1,7 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.Long2ByteFunction;
-import me.jellysquid.mods.phosphor.common.util.PendingLevelUpdateTracker;
+import me.jellysquid.mods.phosphor.common.util.collections.PendingLevelUpdateTracker;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.chunk.light.LevelPropagator;
 import org.spongepowered.asm.mixin.Final;

@@ -3,7 +3,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedLightStorage;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorageData;
-import me.jellysquid.mods.phosphor.common.util.ChunkSectionPosHelper;
+import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.chunk.ChunkNibbleArray;

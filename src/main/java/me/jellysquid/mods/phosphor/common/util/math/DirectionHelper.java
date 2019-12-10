@@ -1,8 +1,8 @@
-package me.jellysquid.mods.phosphor.common.util;
+package me.jellysquid.mods.phosphor.common.util.math;
 
 import net.minecraft.util.math.Direction;
 
-public class PhosphorDirection {
+public class DirectionHelper {
     /**
      * Benchmarks show this to be roughly ~50% faster than {@link Direction#fromVector(int, int, int)}. Input vector
      * is not required to be normalized, which also shaves off some CPU overhead.

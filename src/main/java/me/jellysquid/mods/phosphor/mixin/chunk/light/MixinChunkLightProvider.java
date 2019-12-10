@@ -2,7 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedBlockState;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
-import me.jellysquid.mods.phosphor.common.util.cache.CachedChunkSectionAccess;
+import me.jellysquid.mods.phosphor.common.util.cache.LightEngineBlockAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -32,25 +32,25 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
     @Final
     protected ChunkProvider chunkProvider;
 
-    private CachedChunkSectionAccess cacher;
+    private LightEngineBlockAccess blockAccess;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onConstructed(ChunkProvider provider, LightType lightType, S storage, CallbackInfo ci) {
-        this.cacher = new CachedChunkSectionAccess(provider);
+        this.blockAccess = new LightEngineBlockAccess(provider);
     }
 
     @Inject(method = "method_17530", at = @At("RETURN"))
     private void onCleanup(CallbackInfo ci) {
         // This callback may be executed from the constructor above, and the object won't be initialized then
-        if (this.cacher != null) {
-            this.cacher.reset();
+        if (this.blockAccess != null) {
+            this.blockAccess.reset();
         }
     }
 
     // [VanillaCopy] method_20479
     @Override
     public BlockState getBlockStateForLighting(int x, int y, int z) {
-        return this.cacher.getBlockState(x, y, z);
+        return this.blockAccess.getBlockState(x, y, z);
     }
 
     // [VanillaCopy] method_20479
@@ -84,7 +84,7 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
     // [VanillaCopy] method_20479
     @Override
     public VoxelShape getVoxelShape(int x, int y, int z, Direction dir) {
-        BlockState state = this.cacher.getBlockState(x, y, z);
+        BlockState state = this.blockAccess.getBlockState(x, y, z);
 
         if (state == null) {
             return VoxelShapes.fullCube();

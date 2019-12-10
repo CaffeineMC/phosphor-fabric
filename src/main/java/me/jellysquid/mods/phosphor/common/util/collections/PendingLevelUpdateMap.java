@@ -1,4 +1,4 @@
-package me.jellysquid.mods.phosphor.common.util;
+package me.jellysquid.mods.phosphor.common.util.collections;
 
 import it.unimi.dsi.fastutil.Hash;
 
