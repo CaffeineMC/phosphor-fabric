@@ -3,6 +3,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
+import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -20,11 +21,18 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
+import static net.minecraft.util.math.ChunkSectionPos.toChunkCoord;
+import static net.minecraft.util.math.ChunkSectionPos.toLocalCoord;
+
 @Mixin(ChunkSkyLightProvider.class)
 public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage> {
     @Shadow
     @Final
     private static Direction[] HORIZONTAL_DIRECTIONS;
+
+    @Shadow
+    @Final
+    private static Direction[] DIRECTIONS_SKYLIGHT;
 
     public MixinChunkSkyLightProvider(ChunkProvider chunkProvider, LightType type, SkyLightStorage lightStorage) {
         super(chunkProvider, type, lightStorage);
@@ -141,54 +149,70 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
     public void updateNeighborsRecursively(long id, int targetLevel, boolean mergeAsMin) {
         long chunkId = ChunkSectionPos.toChunkLong(id);
 
+        int x = BlockPos.unpackLongX(id);
         int y = BlockPos.unpackLongY(id);
-        int localY = ChunkSectionPos.toLocalCoord(y);
-        int chunkY = ChunkSectionPos.toChunkCoord(y);
+        int z = BlockPos.unpackLongZ(id);
 
-        int n = 0;
+        int localX = toLocalCoord(x);
+        int localY = toLocalCoord(y);
+        int localZ = toLocalCoord(z);
 
-        if (localY == 0) {
-            while (!((ExtendedGenericLightStorage)this.lightStorage).bridge$hasChunk(ChunkSectionPos.offsetPacked(chunkId, 0, -n - 1, 0))
-                    && ((ExtendedSkyLightStorage)this.lightStorage).bridge$isAboveMinimumHeight(chunkY - n - 1)) {
-                ++n;
+        if (localX > 0 && localX < 15 && localY > 0 && localY < 15 && localZ > 0 && localZ < 15) {
+            for (Direction dir : DIRECTIONS_SKYLIGHT) {
+                this.updateRecursively(id, BlockPos.asLong(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ()), targetLevel, mergeAsMin);
             }
-        }
+        } else {
+            int chunkY = toChunkCoord(y);
+            int n = 0;
 
-        long nId = BlockPos.add(id, 0, -1 - n * 16, 0);
-        long nChunkId = ChunkSectionPos.toChunkLong(nId);
-
-        if (chunkId == nChunkId || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(nChunkId)) {
-            this.updateRecursively(id, nId, targetLevel, mergeAsMin);
-        }
-
-        long aboveId = BlockPos.offset(id, Direction.UP);
-        long aboveChunkId = ChunkSectionPos.toChunkLong(aboveId);
-
-        if (chunkId == aboveChunkId || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(aboveChunkId)) {
-            this.updateRecursively(id, aboveId, targetLevel, mergeAsMin);
-        }
-
-        for (Direction dir : HORIZONTAL_DIRECTIONS) {
-            int offsetY = 0;
-
-            while (true) {
-                long offsetId = BlockPos.add(id, dir.getOffsetX(), -offsetY, dir.getOffsetZ());
-                long offsetChunkId = ChunkSectionPos.toChunkLong(offsetId);
-
-                if (chunkId == offsetChunkId) {
-                    this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
-
-                    break;
+            if (localY == 0) {
+                while (!((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPos.offsetPacked(chunkId, 0, -n - 1, 0))
+                        && ((ExtendedSkyLightStorage) this.lightStorage).bridge$isAboveMinimumHeight(chunkY - n - 1)) {
+                    ++n;
                 }
+            }
 
-                if (((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(offsetChunkId)) {
-                    this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
-                }
+            int belowY = y + (-1 - n * 16);
+            int belowChunkY = toChunkCoord(belowY);
 
-                ++offsetY;
+            if (chunkY == belowChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
+                this.updateRecursively(id, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
+            }
 
-                if (offsetY > n * 16) {
-                    break;
+            int aboveY = y + 1;
+            int aboveChunkY = toChunkCoord(aboveY);
+
+            if (chunkY == aboveChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, aboveChunkY))) {
+                this.updateRecursively(id, BlockPos.asLong(x, aboveY, z), targetLevel, mergeAsMin);
+            }
+
+            for (Direction dir : HORIZONTAL_DIRECTIONS) {
+                int adjX = x + dir.getOffsetX();
+                int adjZ = z + dir.getOffsetZ();
+
+                int offsetY = 0;
+
+                while (true) {
+                    int adjY = y - offsetY;
+
+                    long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
+                    long offsetChunkId = ChunkSectionPos.toChunkLong(offsetId);
+
+                    if (chunkId == offsetChunkId) {
+                        this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
+
+                        break;
+                    }
+
+                    if (((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(offsetChunkId)) {
+                        this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
+                    }
+
+                    ++offsetY;
+
+                    if (offsetY > n * 16) {
+                        break;
+                    }
                 }
             }
         }
