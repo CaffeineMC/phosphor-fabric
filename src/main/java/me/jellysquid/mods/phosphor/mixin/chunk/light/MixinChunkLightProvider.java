@@ -43,7 +43,7 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
     private void onCleanup(CallbackInfo ci) {
         // This callback may be executed from the constructor above, and the object won't be initialized then
         if (this.cacher != null) {
-            this.cacher.cleanup();
+            this.cacher.reset();
         }
     }
 
