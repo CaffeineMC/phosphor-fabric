@@ -1,6 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import it.unimi.dsi.fastutil.longs.Long2ByteFunction;
+import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import me.jellysquid.mods.phosphor.common.util.collections.PendingLevelUpdateTracker;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.chunk.light.LevelPropagator;
@@ -15,31 +15,30 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LevelPropagator.class)
 public abstract class MixinLevelPropagator  {
     @Shadow
-    private int minLevel;
+    private int minPendingLevel;
 
     @Shadow
     @Final
-    private Long2ByteFunction idToLevel;
+    private Long2ByteMap pendingUpdates;
 
     @Shadow
     protected abstract int getLevel(long id);
 
     @Shadow
-    protected abstract int min(int a, int b);
+    protected abstract int minLevel(int a, int b);
 
     @Shadow
     @Final
     private int levelCount;
 
     @Shadow
-    private volatile boolean hasUpdates;
-
+    private volatile boolean hasPendingUpdates;
 
     @Shadow
     protected abstract void setLevel(long id, int level);
 
     @Shadow
-    protected abstract void updateNeighborsRecursively(long id, int targetLevel, boolean mergeAsMin);
+    protected abstract void propagateLevel(long id, int targetLevel, boolean mergeAsMin);
 
     private PendingLevelUpdateTracker[] pendingUpdateSet;
 
@@ -56,13 +55,13 @@ public abstract class MixinLevelPropagator  {
      * @author JellySquid
      */
     @Overwrite
-    public void updateMinLevel(int min) {
-        int prevMin = this.minLevel;
-        this.minLevel = min;
+    private void increaseMinPendingLevel(int min) {
+        int prevMin = this.minPendingLevel;
+        this.minPendingLevel = min;
 
         for (int level = prevMin + 1; level < min; ++level) {
             if (!(this.pendingUpdateSet[level].queueReadIdx >= this.pendingUpdateSet[level].queueWriteIdx)) {
-                this.minLevel = level;
+                this.minPendingLevel = level;
 
                 break;
             }
@@ -74,16 +73,16 @@ public abstract class MixinLevelPropagator  {
      * @author JellySquid
      */
     @Overwrite
-    public void remove(long id) {
-        int level = this.idToLevel.get(id) & 255;
+    public void removePendingUpdate(long id) {
+        int level = this.pendingUpdates.get(id) & 255;
 
         if (level != 255) {
             int prevLevel = this.getLevel(id);
-            int nextLevel = this.min(prevLevel, level);
+            int nextLevel = this.minLevel(prevLevel, level);
 
-            this.removeFromLevel(id, nextLevel, this.levelCount, true);
+            this.removePendingUpdate(id, nextLevel, this.levelCount, true);
 
-            this.hasUpdates = this.minLevel < this.levelCount;
+            this.hasPendingUpdates = this.minPendingLevel < this.levelCount;
         }
     }
 
@@ -91,15 +90,15 @@ public abstract class MixinLevelPropagator  {
      * @author JellySquid
      */
     @Overwrite
-    private void removeFromLevel(long id, int level, int maxLevel, boolean removeFromLevelMap) {
+    private void removePendingUpdate(long id, int level, int maxLevel, boolean removeFromLevelMap) {
         if (removeFromLevelMap) {
-            this.idToLevel.remove(id);
+            this.pendingUpdates.remove(id);
         }
 
         this.pendingUpdateSet[level].remove(id);
 
-        if (this.pendingUpdateSet[level].queueReadIdx >= this.pendingUpdateSet[level].queueWriteIdx && this.minLevel == level) {
-            this.updateMinLevel(maxLevel);
+        if (this.pendingUpdateSet[level].queueReadIdx >= this.pendingUpdateSet[level].queueWriteIdx && this.minPendingLevel == level) {
+            this.increaseMinPendingLevel(maxLevel);
         }
     }
 
@@ -107,13 +106,13 @@ public abstract class MixinLevelPropagator  {
      * @author JellySquid
      */
     @Overwrite
-    private void add(long id, int level, int targetLevel) {
-        this.idToLevel.put(id, (byte) level);
+    private void addPendingUpdate(long id, int level, int targetLevel) {
+        this.pendingUpdates.put(id, (byte) level);
 
         this.pendingUpdateSet[targetLevel].add(id);
 
-        if (this.minLevel > targetLevel) {
-            this.minLevel = targetLevel;
+        if (this.minPendingLevel > targetLevel) {
+            this.minPendingLevel = targetLevel;
         }
     }
 
@@ -121,13 +120,13 @@ public abstract class MixinLevelPropagator  {
      * @author JellySquid
      */
     @Overwrite
-    public final int updateAllRecursively(int maxSteps) {
-        if (this.minLevel >= this.levelCount) {
+    public final int applyPendingUpdates(int maxSteps) {
+        if (this.minPendingLevel >= this.levelCount) {
             return maxSteps;
         }
 
-        while (this.minLevel < this.levelCount && maxSteps > 0) {
-            PendingLevelUpdateTracker set = this.pendingUpdateSet[this.minLevel];
+        while (this.minPendingLevel < this.levelCount && maxSteps > 0) {
+            PendingLevelUpdateTracker set = this.pendingUpdateSet[this.minPendingLevel];
 
             int qIdx = set.queueReadIdx;
 
@@ -147,28 +146,29 @@ public abstract class MixinLevelPropagator  {
                 }
 
                 int from = MathHelper.clamp(this.getLevel(pos), 0, this.levelCount - 1);
-                int to = this.idToLevel.remove(pos) & 255;
+                int to = this.pendingUpdates.remove(pos) & 255;
 
                 if (to < from) {
                     this.setLevel(pos, to);
-                    this.updateNeighborsRecursively(pos, to, true);
+                    this.propagateLevel(pos, to, true);
                 } else if (to > from) {
-                    this.add(pos, to, this.min(this.levelCount - 1, to));
+                    this.addPendingUpdate(pos, to, this.minLevel(this.levelCount - 1, to));
+
                     this.setLevel(pos, this.levelCount - 1);
-                    this.updateNeighborsRecursively(pos, from, false);
+                    this.propagateLevel(pos, from, false);
                 }
             }
 
             set.queueReadIdx = qIdx;
 
             if (set.queueReadIdx >= set.queueWriteIdx) {
-                this.updateMinLevel(this.levelCount);
+                this.increaseMinPendingLevel(this.levelCount);
 
                 set.clear();
             }
         }
 
-        this.hasUpdates = this.minLevel < this.levelCount;
+        this.hasPendingUpdates = this.minPendingLevel < this.levelCount;
 
         return maxSteps;
     }

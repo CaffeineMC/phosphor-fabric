@@ -10,19 +10,19 @@ import org.spongepowered.asm.mixin.Shadow;
 @Mixin(SkyLightStorage.Data.class)
 public class MixinSkyLightStorageData implements ExtendedSkyLightStorageData {
     @Shadow
-    private int defaultHeight;
+    private int defaultTopArraySectionY;
 
     @Shadow
     @Final
-    private Long2IntOpenHashMap heightMap;
+    private Long2IntOpenHashMap topArraySectionY;
 
     @Override
     public int bridge$defaultHeight() {
-        return this.defaultHeight;
+        return this.defaultTopArraySectionY;
     }
 
     @Override
     public Long2IntOpenHashMap bridge$heightMap() {
-        return this.heightMap;
+        return this.topArraySectionY;
     }
 }

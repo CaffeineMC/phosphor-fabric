@@ -23,13 +23,13 @@ public class PhosphorBlockStateCache {
         this.shapes = new VoxelShape[DIRECTIONS.length];
 
         if (state.isOpaque()) {
-            VoxelShape shape = block.method_9571(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
+            VoxelShape shape = block.getCullingShape(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
 
             for (Direction dir : DIRECTIONS) {
-                this.shapes[dir.ordinal()] = VoxelShapes.method_16344(shape, dir);
+                this.shapes[dir.ordinal()] = VoxelShapes.extrudeFace(shape, dir);
             }
         }
 
-        this.lightSubtracted = block.getLightSubtracted(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
+        this.lightSubtracted = block.getOpacity(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
     }
 }

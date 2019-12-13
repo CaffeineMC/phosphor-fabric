@@ -20,7 +20,7 @@ public abstract class MixinBlockState implements ExtendedBlockState {
     private boolean shouldFetchCullState;
 
     @Shadow
-    public abstract VoxelShape method_11615(BlockView view, BlockPos pos);
+    public abstract VoxelShape getCullingShape(BlockView view, BlockPos pos);
 
     @Shadow
     public abstract boolean isOpaque();
@@ -59,9 +59,8 @@ public abstract class MixinBlockState implements ExtendedBlockState {
 
     @Override
     public VoxelShape getDynamicLightShape(BlockView view, BlockPos pos, Direction dir) {
-        return VoxelShapes.method_16344(this.method_11615(view, pos), dir);
+        return VoxelShapes.extrudeFace(this.getCullingShape(view, pos), dir);
     }
-
 
     @Override
     public boolean hasDynamicLightOpacity() {
@@ -70,7 +69,7 @@ public abstract class MixinBlockState implements ExtendedBlockState {
 
     @Override
     public int getDynamicLightOpacity(BlockView view, BlockPos pos) {
-        return this.getBlock().getLightSubtracted((BlockState) (Object) this, view, pos);
+        return this.getBlock().getOpacity((BlockState) (Object) this, view, pos);
     }
 
     @Override

@@ -10,7 +10,7 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.ChunkProvider;
-import net.minecraft.world.chunk.WorldNibbleStorage;
+import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightStorage;
 import org.spongepowered.asm.mixin.Final;
@@ -21,10 +21,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ChunkLightProvider.class)
-public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends LightStorage<M>> implements ExtendedChunkLightProvider {
+public class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S extends LightStorage<M>> implements ExtendedChunkLightProvider {
     @Shadow
     @Final
-    protected BlockPos.Mutable field_19284;
+    protected BlockPos.Mutable reusableBlockPos;
 
     @Shadow
     @Final
@@ -37,7 +37,7 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
         this.blockAccess = new LightEngineBlockAccess(provider);
     }
 
-    @Inject(method = "method_17530", at = @At("RETURN"))
+    @Inject(method = "clearChunkCache", at = @At("RETURN"))
     private void onCleanup(CallbackInfo ci) {
         // This callback may be executed from the constructor above, and the object won't be initialized then
         if (this.blockAccess != null) {
@@ -57,7 +57,7 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
         ExtendedBlockState estate = ((ExtendedBlockState) state);
 
         if (estate.hasDynamicLightOpacity()) {
-            return estate.getDynamicLightOpacity(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z));
+            return estate.getDynamicLightOpacity(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
         } else {
             return estate.getStaticLightOpacity();
         }
@@ -70,7 +70,7 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
 
         if (estate.hasSpecialLightShape()) {
             if (estate.hasDynamicLightShape()) {
-                return estate.getDynamicLightShape(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z), dir);
+                return estate.getDynamicLightShape(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z), dir);
             } else {
                 return estate.getStaticLightShape(dir);
             }

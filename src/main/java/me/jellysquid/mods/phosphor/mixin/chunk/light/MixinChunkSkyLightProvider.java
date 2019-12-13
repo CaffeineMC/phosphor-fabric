@@ -21,8 +21,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
-import static net.minecraft.util.math.ChunkSectionPos.toChunkCoord;
-import static net.minecraft.util.math.ChunkSectionPos.toLocalCoord;
+import static net.minecraft.util.math.ChunkSectionPos.getLocalCoord;
+import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @Mixin(ChunkSkyLightProvider.class)
 public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage> {
@@ -32,7 +32,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
     @Shadow
     @Final
-    private static Direction[] DIRECTIONS_SKYLIGHT;
+    private static Direction[] DIRECTIONS;
 
     public MixinChunkSkyLightProvider(ChunkProvider chunkProvider, LightType type, SkyLightStorage lightStorage) {
         super(chunkProvider, type, lightStorage);
@@ -100,7 +100,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             if (toShape != VoxelShapes.fullCube()) {
                 VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getVoxelShape(fromX, fromY, fromZ, dir);
 
-                if (VoxelShapes.method_20713(fromShape, toShape)) {
+                if (VoxelShapes.unionCoversFullCube(fromShape, toShape)) {
                     return 15;
                 }
             }
@@ -113,13 +113,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
             VoxelShape toShape = ((ExtendedChunkLightProvider) this).getVoxelShape(toState, toX, toY, toZ, altDir.getOpposite());
 
-            if (VoxelShapes.method_20713(VoxelShapes.empty(), toShape)) {
+            if (VoxelShapes.unionCoversFullCube(VoxelShapes.empty(), toShape)) {
                 return 15;
             }
 
             VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getVoxelShape(fromX, fromY, fromZ, Direction.DOWN);
 
-            if (VoxelShapes.method_20713(fromShape, VoxelShapes.empty())) {
+            if (VoxelShapes.unionCoversFullCube(fromShape, VoxelShapes.empty())) {
                 return 15;
             }
         }
@@ -146,44 +146,44 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      */
     @Override
     @Overwrite
-    public void updateNeighborsRecursively(long id, int targetLevel, boolean mergeAsMin) {
-        long chunkId = ChunkSectionPos.toChunkLong(id);
+    public void propagateLevel(long id, int targetLevel, boolean mergeAsMin) {
+        long chunkId = ChunkSectionPos.fromGlobalPos(id);
 
         int x = BlockPos.unpackLongX(id);
         int y = BlockPos.unpackLongY(id);
         int z = BlockPos.unpackLongZ(id);
 
-        int localX = toLocalCoord(x);
-        int localY = toLocalCoord(y);
-        int localZ = toLocalCoord(z);
+        int localX = getLocalCoord(x);
+        int localY = getLocalCoord(y);
+        int localZ = getLocalCoord(z);
 
         if (localX > 0 && localX < 15 && localY > 0 && localY < 15 && localZ > 0 && localZ < 15) {
-            for (Direction dir : DIRECTIONS_SKYLIGHT) {
-                this.updateRecursively(id, BlockPos.asLong(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ()), targetLevel, mergeAsMin);
+            for (Direction dir : DIRECTIONS) {
+                this.propagateLevel(id, BlockPos.asLong(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ()), targetLevel, mergeAsMin);
             }
         } else {
-            int chunkY = toChunkCoord(y);
+            int chunkY = getSectionCoord(y);
             int n = 0;
 
             if (localY == 0) {
-                while (!((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPos.offsetPacked(chunkId, 0, -n - 1, 0))
+                while (!((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPos.offset(chunkId, 0, -n - 1, 0))
                         && ((ExtendedSkyLightStorage) this.lightStorage).bridge$isAboveMinimumHeight(chunkY - n - 1)) {
                     ++n;
                 }
             }
 
             int belowY = y + (-1 - n * 16);
-            int belowChunkY = toChunkCoord(belowY);
+            int belowChunkY = getSectionCoord(belowY);
 
             if (chunkY == belowChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
-                this.updateRecursively(id, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
+                this.propagateLevel(id, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
             }
 
             int aboveY = y + 1;
-            int aboveChunkY = toChunkCoord(aboveY);
+            int aboveChunkY = getSectionCoord(aboveY);
 
             if (chunkY == aboveChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, aboveChunkY))) {
-                this.updateRecursively(id, BlockPos.asLong(x, aboveY, z), targetLevel, mergeAsMin);
+                this.propagateLevel(id, BlockPos.asLong(x, aboveY, z), targetLevel, mergeAsMin);
             }
 
             for (Direction dir : HORIZONTAL_DIRECTIONS) {
@@ -196,16 +196,16 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
                     int adjY = y - offsetY;
 
                     long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
-                    long offsetChunkId = ChunkSectionPos.toChunkLong(offsetId);
+                    long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
 
                     if (chunkId == offsetChunkId) {
-                        this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
+                        this.propagateLevel(id, offsetId, targetLevel, mergeAsMin);
 
                         break;
                     }
 
                     if (((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(offsetChunkId)) {
-                        this.updateRecursively(id, offsetId, targetLevel, mergeAsMin);
+                        this.propagateLevel(id, offsetId, targetLevel, mergeAsMin);
                     }
 
                     ++offsetY;

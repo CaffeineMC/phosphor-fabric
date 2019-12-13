@@ -42,15 +42,15 @@ public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
         int posY = BlockPos.unpackLongY(pos);
         int posZ = BlockPos.unpackLongZ(pos);
 
-        int chunkX = ChunkSectionPos.toChunkCoord(posX);
-        int chunkY = ChunkSectionPos.toChunkCoord(posY);
-        int chunkZ = ChunkSectionPos.toChunkCoord(posZ);
+        int chunkX = ChunkSectionPos.getSectionCoord(posX);
+        int chunkY = ChunkSectionPos.getSectionCoord(posY);
+        int chunkZ = ChunkSectionPos.getSectionCoord(posZ);
 
         long chunk = ChunkSectionPos.asLong(chunkX, chunkY, chunkZ);
 
         SkyLightStorage.Data data = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getStorageUncached();
 
-        int h = ((ExtendedSkyLightStorageData) (Object) data).bridge$heightMap().get(ChunkSectionPos.toLightStorageIndex(chunk));
+        int h = ((ExtendedSkyLightStorageData) (Object) data).bridge$heightMap().get(ChunkSectionPos.withZeroZ(chunk));
 
         if (h != ((ExtendedSkyLightStorageData) (Object) data).bridge$defaultHeight() && chunkY < h) {
             ChunkNibbleArray array = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getDataForChunk(data, chunk);
@@ -72,9 +72,9 @@ public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
             }
 
             return array.get(
-                    ChunkSectionPos.toLocalCoord(posX),
-                    ChunkSectionPos.toLocalCoord(posY),
-                    ChunkSectionPos.toLocalCoord(posZ)
+                    ChunkSectionPos.getLocalCoord(posX),
+                    ChunkSectionPos.getLocalCoord(posY),
+                    ChunkSectionPos.getLocalCoord(posZ)
             );
         } else {
             return 15;

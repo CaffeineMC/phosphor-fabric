@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
-import static net.minecraft.util.math.ChunkSectionPos.toChunkCoord;
+import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @SuppressWarnings("rawtypes")
 @Mixin(ChunkBlockLightProvider.class)
@@ -33,7 +33,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
     @Shadow
     @Final
-    private static Direction[] DIRECTIONS_BLOCKLIGHT;
+    private static Direction[] DIRECTIONS;
 
     /**
      * This breaks up the call to method_20479 into smaller parts so we do not have to pass a mutable heap object
@@ -85,7 +85,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             VoxelShape bShape = ((ExtendedChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
             VoxelShape aShape = ((ExtendedChunkLightProvider) this).getVoxelShape(aX, aY, aZ, dir);
 
-            if (!VoxelShapes.method_20713(aShape, bShape)) {
+            if (!VoxelShapes.unionCoversFullCube(aShape, bShape)) {
                 return currentLevel + Math.max(1, newLevel);
             }
         }
@@ -100,22 +100,22 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
      */
     @Override
     @Overwrite
-    public void updateNeighborsRecursively(long id, int targetLevel, boolean mergeAsMin) {
+    public void propagateLevel(long id, int targetLevel, boolean mergeAsMin) {
         int x = BlockPos.unpackLongX(id);
         int y = BlockPos.unpackLongY(id);
         int z = BlockPos.unpackLongZ(id);
 
-        long chunk = ChunkSectionPos.asLong(toChunkCoord(x), toChunkCoord(y), toChunkCoord(z));
+        long chunk = ChunkSectionPos.asLong(getSectionCoord(x), getSectionCoord(y), getSectionCoord(z));
 
-        for (Direction dir : DIRECTIONS_BLOCKLIGHT) {
+        for (Direction dir : DIRECTIONS) {
             int adjX = x + dir.getOffsetX();
             int adjY = y + dir.getOffsetY();
             int adjZ = z + dir.getOffsetZ();
 
-            long adjChunk = ChunkSectionPos.asLong(toChunkCoord(adjX), toChunkCoord(adjY), toChunkCoord(adjZ));
+            long adjChunk = ChunkSectionPos.asLong(getSectionCoord(adjX), getSectionCoord(adjY), getSectionCoord(adjZ));
 
             if ((chunk == adjChunk) || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(adjChunk)) {
-                this.updateRecursively(id, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
+                this.propagateLevel(id, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
             }
         }
     }
