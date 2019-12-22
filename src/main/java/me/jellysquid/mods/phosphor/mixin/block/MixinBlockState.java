@@ -1,6 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.block;
 
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedBlockState;
+import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -17,8 +18,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(BlockState.class)
 public abstract class MixinBlockState implements ExtendedBlockState {
-    private static final Direction[] DIRECTIONS = Direction.values();
-
     @Shadow
     public abstract VoxelShape method_11615(BlockView view, BlockPos pos);
 
@@ -35,64 +34,53 @@ public abstract class MixinBlockState implements ExtendedBlockState {
 
     private int lightSubtracted;
 
-    private boolean hasSpecialLightShape;
-
     @Inject(method = "initShapeCache", at = @At(value = "RETURN"))
     private void onConstructed(CallbackInfo ci) {
         BlockState state = (BlockState) (Object) this;
         Block block = this.getBlock();
 
+        this.lightShapes = LightUtil.NULL_LIGHT_SHAPES;
+        this.lightSubtracted = Integer.MAX_VALUE;
+
         if (!block.hasDynamicBounds()) {
-            if (this.isOpaque()) {
+            if (this.isOpaque() && this.hasSidedTransparency()) {
                 VoxelShape shape = block.method_9571(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
 
-                this.lightShapes = new VoxelShape[DIRECTIONS.length];
+                this.lightShapes = new VoxelShape[LightUtil.DIRECTIONS.length];
 
-                for (Direction dir : DIRECTIONS) {
+                for (Direction dir : LightUtil.DIRECTIONS) {
                     this.lightShapes[dir.ordinal()] = VoxelShapes.method_16344(shape, dir);
                 }
+            } else {
+                this.lightShapes = LightUtil.DEFAULT_LIGHT_SHAPES;
             }
 
             this.lightSubtracted = block.getLightSubtracted(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
-        } else {
-            this.lightSubtracted = Integer.MIN_VALUE;
         }
-
-        this.hasSpecialLightShape = this.isOpaque() && this.hasSidedTransparency();
     }
 
     @Override
-    public boolean hasDynamicLightShape() {
-        return this.lightShapes == null;
-    }
-
-    @Override
-    public boolean hasSpecialLightShape() {
-        return this.hasSpecialLightShape;
-    }
-
-    @Override
-    public VoxelShape getStaticLightShape(Direction dir) {
+    public VoxelShape getCachedLightShape(Direction dir) {
         return this.lightShapes[dir.ordinal()];
     }
 
     @Override
-    public VoxelShape getDynamicLightShape(BlockView view, BlockPos pos, Direction dir) {
+    public VoxelShape getLightShape(BlockView view, BlockPos pos, Direction dir) {
         return VoxelShapes.method_16344(this.method_11615(view, pos), dir);
     }
 
     @Override
-    public boolean hasDynamicLightOpacity() {
-        return this.lightSubtracted == Integer.MIN_VALUE;
+    public boolean hasCachedLightOpacity() {
+        return this.lightSubtracted != Integer.MAX_VALUE;
     }
 
     @Override
-    public int getDynamicLightOpacity(BlockView view, BlockPos pos) {
+    public int getLightOpacity(BlockView view, BlockPos pos) {
         return this.getBlock().getLightSubtracted((BlockState) (Object) this, view, pos);
     }
 
     @Override
-    public int getStaticLightOpacity() {
+    public int getCachedLightOpacity() {
         return this.lightSubtracted;
     }
 }
