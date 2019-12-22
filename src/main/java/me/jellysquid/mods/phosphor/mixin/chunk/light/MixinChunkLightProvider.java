@@ -56,11 +56,11 @@ public class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S exten
     public int getSubtractedLight(BlockState state, int x, int y, int z) {
         ExtendedBlockState estate = ((ExtendedBlockState) state);
 
-        if (estate.hasDynamicLightOpacity()) {
-            return estate.getDynamicLightOpacity(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
-        } else {
-            return estate.getStaticLightOpacity();
+        if (estate.hasCachedLightOpacity()) {
+            return estate.getCachedLightOpacity();
         }
+
+        return estate.getLightOpacity(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
     }
 
     // [VanillaCopy] method_20479
@@ -68,15 +68,13 @@ public class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S exten
     public VoxelShape getVoxelShape(BlockState state, int x, int y, int z, Direction dir) {
         ExtendedBlockState estate = ((ExtendedBlockState) state);
 
-        if (estate.hasSpecialLightShape()) {
-            if (estate.hasDynamicLightShape()) {
-                return estate.getDynamicLightShape(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z), dir);
-            } else {
-                return estate.getStaticLightShape(dir);
-            }
-        } else {
-            return VoxelShapes.empty();
+        VoxelShape shape = estate.getCachedLightShape(dir);
+
+        if (shape != null) {
+            return shape;
         }
+
+        return estate.getLightShape(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z), dir);
     }
 
     // [VanillaCopy] method_20479
