@@ -82,8 +82,8 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
                 return 15;
             }
 
-            VoxelShape bShape = ((ExtendedChunkLightProvider) this).getVoxelShape(bState, bX, bY, bZ, dir.getOpposite());
-            VoxelShape aShape = ((ExtendedChunkLightProvider) this).getVoxelShape(aX, aY, aZ, dir);
+            VoxelShape aShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(aX, aY, aZ, dir);
+            VoxelShape bShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(bState, bX, bY, bZ, dir.getOpposite());
 
             if (!VoxelShapes.unionCoversFullCube(aShape, bShape)) {
                 return currentLevel + Math.max(1, newLevel);

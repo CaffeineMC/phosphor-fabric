@@ -9,8 +9,7 @@ import java.util.Arrays;
 public class LightUtil {
     public static final Direction[] DIRECTIONS = Direction.values();
 
-    public static final VoxelShape[] DEFAULT_LIGHT_SHAPES = new VoxelShape[Direction.values().length];
-    public static final VoxelShape[] NULL_LIGHT_SHAPES = new VoxelShape[Direction.values().length];
+    public static final VoxelShape[] DEFAULT_LIGHT_SHAPES = new VoxelShape[DIRECTIONS.length];
 
     static {
         Arrays.fill(DEFAULT_LIGHT_SHAPES, VoxelShapes.empty());

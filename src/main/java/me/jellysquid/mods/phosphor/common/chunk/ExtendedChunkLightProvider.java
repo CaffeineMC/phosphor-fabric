@@ -21,7 +21,7 @@ public interface ExtendedChunkLightProvider {
      * Returns the VoxelShape of a block for lighting without making a second call to
      * {@link ExtendedChunkLightProvider#getBlockStateForLighting(int, int, int)}.
      */
-    VoxelShape getVoxelShape(BlockState state, int x, int y, int z, Direction dir);
+    VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir);
 
 
     /**
@@ -30,5 +30,5 @@ public interface ExtendedChunkLightProvider {
      * at the specified coordinates. You should prefer the variant of this method which consumes a BlockState if you
      * already have obtained it prior as it will be faster.
      */
-    VoxelShape getVoxelShape(int x, int y, int z, Direction dir);
+    VoxelShape getOpaqueShape(int x, int y, int z, Direction dir);
 }
