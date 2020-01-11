@@ -95,10 +95,10 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         }
 
         if (dir != null) {
-            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getVoxelShape(toState, toX, toY, toZ, dir.getOpposite());
+            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
 
             if (toShape != VoxelShapes.fullCube()) {
-                VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getVoxelShape(fromX, fromY, fromZ, dir);
+                VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(fromX, fromY, fromZ, dir);
 
                 if (VoxelShapes.method_20713(fromShape, toShape)) {
                     return 15;
@@ -111,13 +111,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
                 return 15;
             }
 
-            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getVoxelShape(toState, toX, toY, toZ, altDir.getOpposite());
+            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(toState, toX, toY, toZ, altDir.getOpposite());
 
             if (VoxelShapes.method_20713(VoxelShapes.empty(), toShape)) {
                 return 15;
             }
 
-            VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getVoxelShape(fromX, fromY, fromZ, Direction.DOWN);
+            VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(fromX, fromY, fromZ, Direction.DOWN);
 
             if (VoxelShapes.method_20713(fromShape, VoxelShapes.empty())) {
                 return 15;

@@ -22,50 +22,49 @@ public abstract class MixinBlockState implements ExtendedBlockState {
     public abstract VoxelShape method_11615(BlockView view, BlockPos pos);
 
     @Shadow
-    public abstract boolean isOpaque();
-
-    @Shadow
     public abstract Block getBlock();
 
-    @Shadow
-    public abstract boolean hasSidedTransparency();
-
-    private VoxelShape[] lightShapes;
+    private VoxelShape[] extrudedFaces;
 
     private int lightSubtracted;
 
     @Inject(method = "initShapeCache", at = @At(value = "RETURN"))
-    private void onConstructed(CallbackInfo ci) {
+    private void init(CallbackInfo ci) {
         BlockState state = (BlockState) (Object) this;
         Block block = this.getBlock();
 
-        this.lightShapes = LightUtil.NULL_LIGHT_SHAPES;
-        this.lightSubtracted = Integer.MAX_VALUE;
+        this.extrudedFaces = LightUtil.DEFAULT_LIGHT_SHAPES;
 
-        if (!block.hasDynamicBounds()) {
-            if (this.isOpaque() && this.hasSidedTransparency()) {
+        boolean special = state.isOpaque() && state.hasSidedTransparency();
+
+        if (block.hasDynamicBounds()) {
+            this.lightSubtracted = Integer.MAX_VALUE;
+        } else {
+            if (state.isOpaque()) {
                 VoxelShape shape = block.method_9571(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
 
-                this.lightShapes = new VoxelShape[LightUtil.DIRECTIONS.length];
+                this.extrudedFaces = new VoxelShape[LightUtil.DIRECTIONS.length];
 
                 for (Direction dir : LightUtil.DIRECTIONS) {
-                    this.lightShapes[dir.ordinal()] = VoxelShapes.method_16344(shape, dir);
+                    this.extrudedFaces[dir.ordinal()] = VoxelShapes.method_16344(shape, dir);
                 }
-            } else {
-                this.lightShapes = LightUtil.DEFAULT_LIGHT_SHAPES;
             }
 
-            this.lightSubtracted = block.getLightSubtracted(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
+            if (special) {
+                this.lightSubtracted = Integer.MAX_VALUE;
+            } else {
+                this.lightSubtracted = block.getLightSubtracted(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
+            }
         }
     }
 
     @Override
-    public VoxelShape getCachedLightShape(Direction dir) {
-        return this.lightShapes[dir.ordinal()];
+    public VoxelShape getCachedExtrudedFace(Direction dir) {
+        return this.extrudedFaces[dir.ordinal()];
     }
 
     @Override
-    public VoxelShape getLightShape(BlockView view, BlockPos pos, Direction dir) {
+    public VoxelShape getDynamicExtrudedFace(BlockView view, BlockPos pos, Direction dir) {
         return VoxelShapes.method_16344(this.method_11615(view, pos), dir);
     }
 
@@ -75,7 +74,7 @@ public abstract class MixinBlockState implements ExtendedBlockState {
     }
 
     @Override
-    public int getLightOpacity(BlockView view, BlockPos pos) {
+    public int getDynamicLightOpacity(BlockView view, BlockPos pos) {
         return this.getBlock().getLightSubtracted((BlockState) (Object) this, view, pos);
     }
 

@@ -58,34 +58,34 @@ public class MixinChunkLightProvider<M extends WorldNibbleStorage<M>, S extends 
 
         if (estate.hasCachedLightOpacity()) {
             return estate.getCachedLightOpacity();
+        } else {
+            return estate.getDynamicLightOpacity(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z));
         }
-
-        return estate.getLightOpacity(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z));
     }
 
     // [VanillaCopy] method_20479
     @Override
-    public VoxelShape getVoxelShape(BlockState state, int x, int y, int z, Direction dir) {
+    public VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir) {
         ExtendedBlockState estate = ((ExtendedBlockState) state);
 
-        VoxelShape shape = estate.getCachedLightShape(dir);
+        VoxelShape shape = estate.getCachedExtrudedFace(dir);
 
         if (shape != null) {
             return shape;
         }
 
-        return estate.getLightShape(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z), dir);
+        return estate.getDynamicExtrudedFace(this.chunkProvider.getWorld(), this.field_19284.set(x, y, z), dir);
     }
 
     // [VanillaCopy] method_20479
     @Override
-    public VoxelShape getVoxelShape(int x, int y, int z, Direction dir) {
+    public VoxelShape getOpaqueShape(int x, int y, int z, Direction dir) {
         BlockState state = this.blockAccess.getBlockState(x, y, z);
 
         if (state == null) {
             return VoxelShapes.fullCube();
         }
 
-        return this.getVoxelShape(state, x, y, z, dir);
+        return this.getOpaqueShape(state, x, y, z, dir);
     }
 }
