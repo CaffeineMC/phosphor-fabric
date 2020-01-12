@@ -32,6 +32,4 @@ public interface ExtendedBlockState {
      * cached.
      */
     int getDynamicLightOpacity(BlockView view, BlockPos pos);
-
-    boolean hasSpecialLightShape();
 }
