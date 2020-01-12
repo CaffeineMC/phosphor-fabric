@@ -33,14 +33,11 @@ public abstract class MixinBlockState implements ExtendedBlockState {
         BlockState state = (BlockState) (Object) this;
         Block block = this.getBlock();
 
-        this.extrudedFaces = LightUtil.DEFAULT_LIGHT_SHAPES;
-
-        boolean special = state.isOpaque() && state.hasSidedTransparency();
-
         if (block.hasDynamicBounds()) {
+            this.extrudedFaces = state.isOpaque() ? LightUtil.NULL_LIGHT_SHAPES : LightUtil.EMPTY_LIGHT_SHAPES;
             this.lightSubtracted = Integer.MAX_VALUE;
         } else {
-            if (state.isOpaque()) {
+            if (state.isOpaque() && state.hasSidedTransparency()) {
                 VoxelShape shape = block.getCullingShape(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
 
                 this.extrudedFaces = new VoxelShape[LightUtil.DIRECTIONS.length];
@@ -48,13 +45,11 @@ public abstract class MixinBlockState implements ExtendedBlockState {
                 for (Direction dir : LightUtil.DIRECTIONS) {
                     this.extrudedFaces[dir.ordinal()] = VoxelShapes.extrudeFace(shape, dir);
                 }
+            } else {
+                this.extrudedFaces = LightUtil.EMPTY_LIGHT_SHAPES;
             }
 
-            if (special) {
-                this.lightSubtracted = Integer.MAX_VALUE;
-            } else {
-                this.lightSubtracted = block.getOpacity(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
-            }
+            this.lightSubtracted = block.getOpacity(state, EmptyBlockView.INSTANCE, BlockPos.ORIGIN);
         }
     }
 
