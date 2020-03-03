@@ -164,7 +164,7 @@ public abstract class MixinLevelPropagator  {
             if (set.queueReadIdx >= set.queueWriteIdx) {
                 this.increaseMinPendingLevel(this.levelCount);
 
-                set.clear();
+                set.deplete();
             }
         }
 

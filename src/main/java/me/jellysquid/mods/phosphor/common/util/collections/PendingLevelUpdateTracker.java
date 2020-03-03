@@ -1,6 +1,7 @@
 package me.jellysquid.mods.phosphor.common.util.collections;
 
 public class PendingLevelUpdateTracker {
+    private final int initSize;
     private final int initLevelCapacity;
 
     public PendingLevelUpdateMap map;
@@ -9,6 +10,7 @@ public class PendingLevelUpdateTracker {
     public int queueReadIdx, queueWriteIdx;
 
     public PendingLevelUpdateTracker(int initLevelCapacity, int size) {
+        this.initSize = size;
         this.initLevelCapacity = initLevelCapacity;
         this.queue = new long[size];
         this.map = new PendingLevelUpdateMap(this.initLevelCapacity, 0.5f);
@@ -36,17 +38,22 @@ public class PendingLevelUpdateTracker {
         return this.map.replace(pos, idx, Integer.MIN_VALUE);
     }
 
-    public void clear() {
-        this.map = new PendingLevelUpdateMap(this.initLevelCapacity, 0.5f);
-        this.queueReadIdx = 0;
-        this.queueWriteIdx = 0;
-    }
-
     private void increaseQueueCapacity() {
         long[] old = this.queue;
 
         this.queue = new long[old.length * 2];
 
         System.arraycopy(old, 0, this.queue, 0, old.length);
+    }
+
+    public void deplete() {
+        this.map = new PendingLevelUpdateMap(this.initLevelCapacity, 0.5f);
+
+        this.queueReadIdx = 0;
+        this.queueWriteIdx = 0;
+
+        if (this.queue.length > this.initSize) {
+            this.queue = new long[this.initSize];
+        }
     }
 }
