@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
+import me.jellysquid.mods.phosphor.common.chunk.ExtendedLevelPropagator;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
@@ -25,7 +26,8 @@ import static net.minecraft.util.math.ChunkSectionPos.getLocalCoord;
 import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @Mixin(ChunkSkyLightProvider.class)
-public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage> {
+public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage>
+        implements ExtendedLevelPropagator, ExtendedChunkLightProvider {
     @Shadow
     @Final
     private static Direction[] HORIZONTAL_DIRECTIONS;
@@ -39,21 +41,31 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
     }
 
     /**
+     * @author JellySquid
+     * @reason Use optimized method below
+     */
+    @Override
+    @Overwrite
+    public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
+        return this.getPropagatedLevel(fromId, null, toId, currentLevel);
+    }
+
+    /**
      * This breaks up the call to method_20479 into smaller parts so we do not have to pass a mutable heap object
      * to the method in order to extract the light result. This has a few other advantages, allowing us to:
      * - Avoid the de-optimization that occurs from allocating and passing a heap object
      * - Avoid unpacking coordinates twice for both the call to method_20479 and method_20710.
      * - Avoid the the specific usage of AtomicInteger, which has additional overhead for the atomic get/set operations.
      * - Avoid checking if the checked block is opaque twice.
-     * <p>
+     * - Avoid a redundant block state lookup by re-using {@param fromState}
+     *
      * The rest of the implementation has been otherwise copied from vanilla, but is optimized to avoid constantly
      * (un)packing coordinates and to use an optimized direction lookup function.
      *
-     * @author JellySquid
+     * @param fromState The re-usable block state at position {@param fromId}
      */
     @Override
-    @Overwrite
-    public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
+    public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel) {
         if (toId == Long.MAX_VALUE) {
             return 15;
         }
@@ -74,7 +86,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int toY = BlockPos.unpackLongY(toId);
         int toZ = BlockPos.unpackLongZ(toId);
 
-        BlockState toState = ((ExtendedChunkLightProvider) this).getBlockStateForLighting(toX, toY, toZ);
+        BlockState toState = this.getBlockStateForLighting(toX, toY, toZ);
 
         if (toState == null) {
             return 15;
@@ -83,6 +95,10 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int fromX = BlockPos.unpackLongX(fromId);
         int fromY = BlockPos.unpackLongY(fromId);
         int fromZ = BlockPos.unpackLongZ(fromId);
+
+        if (fromState == null) {
+            fromState = this.getBlockStateForLighting(fromX, fromY, fromZ);
+        }
 
         boolean verticalOnly = fromX == toX && fromZ == toZ;
 
@@ -95,10 +111,10 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         }
 
         if (dir != null) {
-            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
+            VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
 
             if (toShape != VoxelShapes.fullCube()) {
-                VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(fromX, fromY, fromZ, dir);
+                VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
 
                 if (VoxelShapes.unionCoversFullCube(fromShape, toShape)) {
                     return 15;
@@ -111,20 +127,20 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
                 return 15;
             }
 
-            VoxelShape toShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(toState, toX, toY, toZ, altDir.getOpposite());
+            VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, altDir.getOpposite());
 
             if (VoxelShapes.unionCoversFullCube(VoxelShapes.empty(), toShape)) {
                 return 15;
             }
 
-            VoxelShape fromShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(fromX, fromY, fromZ, Direction.DOWN);
+            VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, Direction.DOWN);
 
             if (VoxelShapes.unionCoversFullCube(fromShape, VoxelShapes.empty())) {
                 return 15;
             }
         }
 
-        int out = ((ExtendedChunkLightProvider) this).getSubtractedLight(toState, toX, toY, toZ);
+        int out = this.getSubtractedLight(toState, toX, toY, toZ);
 
         if ((fromId == Long.MAX_VALUE || verticalOnly && fromY > toY) && currentLevel == 0 && out == 0) {
             return 0;
@@ -139,6 +155,8 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * - When necessary, coordinate re-packing is reduced to the minimum number of operations. Most of them can be reduced
      * to only updating the Y-coordinate versus re-computing the entire integer.
      * - Coordinate re-packing is removed where unnecessary (such as when only comparing the Y-coordinate of two positions)
+     * - A special propagation method is used that allows the BlockState at {@param id} to be passed, allowing the code
+     * which follows to simply re-use it instead of redundantly retrieving another block state.
      * <p>
      * This copies the vanilla implementation as close as possible.
      *
@@ -157,65 +175,71 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int localY = getLocalCoord(y);
         int localZ = getLocalCoord(z);
 
+        BlockState fromState = this.getBlockStateForLighting(x, y, z);
+
+        // Fast-path: Use much simpler logic if we do not need to access adjacent chunks
         if (localX > 0 && localX < 15 && localY > 0 && localY < 15 && localZ > 0 && localZ < 15) {
             for (Direction dir : DIRECTIONS) {
-                this.propagateLevel(id, BlockPos.asLong(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ()), targetLevel, mergeAsMin);
-            }
-        } else {
-            int chunkY = getSectionCoord(y);
-            int n = 0;
-
-            if (localY == 0) {
-                while (!((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPos.offset(chunkId, 0, -n - 1, 0))
-                        && ((ExtendedSkyLightStorage) this.lightStorage).bridge$isAboveMinimumHeight(chunkY - n - 1)) {
-                    ++n;
-                }
+                this.propagateLevel(id, fromState, BlockPos.asLong(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ()), targetLevel, mergeAsMin);
             }
 
-            int belowY = y + (-1 - n * 16);
-            int belowChunkY = getSectionCoord(belowY);
+            return;
+        }
 
-            if (chunkY == belowChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
-                this.propagateLevel(id, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
-            }
+        int chunkY = getSectionCoord(y);
+        int chunkOffsetY = 0;
 
-            int aboveY = y + 1;
-            int aboveChunkY = getSectionCoord(aboveY);
-
-            if (chunkY == aboveChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, aboveChunkY))) {
-                this.propagateLevel(id, BlockPos.asLong(x, aboveY, z), targetLevel, mergeAsMin);
-            }
-
-            for (Direction dir : HORIZONTAL_DIRECTIONS) {
-                int adjX = x + dir.getOffsetX();
-                int adjZ = z + dir.getOffsetZ();
-
-                int offsetY = 0;
-
-                while (true) {
-                    int adjY = y - offsetY;
-
-                    long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
-                    long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
-
-                    if (chunkId == offsetChunkId) {
-                        this.propagateLevel(id, offsetId, targetLevel, mergeAsMin);
-
-                        break;
-                    }
-
-                    if (((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(offsetChunkId)) {
-                        this.propagateLevel(id, offsetId, targetLevel, mergeAsMin);
-                    }
-
-                    ++offsetY;
-
-                    if (offsetY > n * 16) {
-                        break;
-                    }
-                }
+        // Skylight optimization: Try to find bottom-most non-empty chunk
+        if (localY == 0) {
+            while (!((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPos.offset(chunkId, 0, -chunkOffsetY - 1, 0))
+                    && ((ExtendedSkyLightStorage) this.lightStorage).bridge$isAboveMinimumHeight(chunkY - chunkOffsetY - 1)) {
+                ++chunkOffsetY;
             }
         }
 
+        int belowY = y + (-1 - chunkOffsetY * 16);
+        int belowChunkY = getSectionCoord(belowY);
+
+        if (chunkY == belowChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
+        }
+
+        int aboveY = y + 1;
+        int aboveChunkY = getSectionCoord(aboveY);
+
+        if (chunkY == aboveChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, aboveChunkY))) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, aboveY, z), targetLevel, mergeAsMin);
+        }
+
+        for (Direction dir : HORIZONTAL_DIRECTIONS) {
+            int adjX = x + dir.getOffsetX();
+            int adjZ = z + dir.getOffsetZ();
+
+            int offsetY = 0;
+
+            while (true) {
+                int adjY = y - offsetY;
+
+                long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
+                long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
+
+                boolean flag = chunkId == offsetChunkId;
+
+                if (flag || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(offsetChunkId)) {
+                    this.propagateLevel(id, fromState, offsetId, targetLevel, mergeAsMin);
+                }
+
+                if (flag) {
+                    break;
+                }
+
+                offsetY++;
+
+                if (offsetY > chunkOffsetY * 16) {
+                    break;
+                }
+            }
+        }
     }
+
 }
