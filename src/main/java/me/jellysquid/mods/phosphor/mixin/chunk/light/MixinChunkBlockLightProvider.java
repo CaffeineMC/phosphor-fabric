@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
+import me.jellysquid.mods.phosphor.common.chunk.ExtendedLevelPropagator;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -21,9 +22,9 @@ import org.spongepowered.asm.mixin.Shadow;
 
 import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
-@SuppressWarnings("rawtypes")
 @Mixin(ChunkBlockLightProvider.class)
-public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<BlockLightStorage.Data, BlockLightStorage> {
+public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<BlockLightStorage.Data, BlockLightStorage>
+        implements ExtendedLevelPropagator, ExtendedChunkLightProvider {
     public MixinChunkBlockLightProvider(ChunkProvider chunkProvider, LightType type, BlockLightStorage lightStorage) {
         super(chunkProvider, type, lightStorage);
     }
@@ -36,21 +37,32 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
     private static Direction[] DIRECTIONS;
 
     /**
+     * @reason Use optimized variant
+     * @author JellySquid
+     */
+    @Override
+    @Overwrite
+    public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
+        return this.getPropagatedLevel(fromId, null, toId, currentLevel);
+    }
+
+    /**
      * This breaks up the call to method_20479 into smaller parts so we do not have to pass a mutable heap object
      * to the method in order to extract the light result. This has a few other advantages, allowing us to:
      * - Avoid the de-optimization that occurs from allocating and passing a heap object
      * - Avoid unpacking coordinates twice for both the call to method_20479 and method_20710.
      * - Avoid the the specific usage of AtomicInteger, which has additional overhead for the atomic get/set operations.
      * - Avoid checking if the checked block is opaque twice.
+     * - Avoid a redundant block state lookup by re-using {@param fromState}
      * <p>
      * The rest of the implementation has been otherwise copied from vanilla, but is optimized to avoid constantly
      * (un)packing coordinates and to use an optimized direction lookup function.
      *
+     * @param fromState The re-usable block state at position {@param fromId}
      * @author JellySquid
      */
     @Override
-    @Overwrite
-    public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
+    public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel) {
         if (toId == Long.MAX_VALUE) {
             return 15;
         } else if (fromId == Long.MAX_VALUE) {
@@ -59,31 +71,35 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             return currentLevel;
         }
 
-        int bX = BlockPos.unpackLongX(toId);
-        int bY = BlockPos.unpackLongY(toId);
-        int bZ = BlockPos.unpackLongZ(toId);
+        int toX = BlockPos.unpackLongX(toId);
+        int toY = BlockPos.unpackLongY(toId);
+        int toZ = BlockPos.unpackLongZ(toId);
 
-        int aX = BlockPos.unpackLongX(fromId);
-        int aY = BlockPos.unpackLongY(fromId);
-        int aZ = BlockPos.unpackLongZ(fromId);
+        int fromX = BlockPos.unpackLongX(fromId);
+        int fromY = BlockPos.unpackLongY(fromId);
+        int fromZ = BlockPos.unpackLongZ(fromId);
 
-        Direction dir = DirectionHelper.getVecDirection(bX - aX, bY - aY, bZ - aZ);
+        Direction dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
 
         if (dir != null) {
-            BlockState bState = ((ExtendedChunkLightProvider) this).getBlockStateForLighting(bX, bY, bZ);
+            BlockState toState = this.getBlockStateForLighting(toX, toY, toZ);
 
-            if (bState == null) {
+            if (toState == null) {
                 return 15;
             }
 
-            int newLevel = ((ExtendedChunkLightProvider) this).getSubtractedLight(bState, bX, bY, bZ);
+            int newLevel = this.getSubtractedLight(toState, toX, toY, toZ);
 
             if (newLevel >= 15) {
                 return 15;
             }
 
-            VoxelShape aShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(aX, aY, aZ, dir);
-            VoxelShape bShape = ((ExtendedChunkLightProvider) this).getOpaqueShape(bState, bX, bY, bZ, dir.getOpposite());
+            if (fromState == null) {
+                fromState = this.getBlockStateForLighting(fromX, fromY, fromZ);
+            }
+
+            VoxelShape aShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
+            VoxelShape bShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
 
             if (!VoxelShapes.unionCoversFullCube(aShape, bShape)) {
                 return currentLevel + Math.max(1, newLevel);
@@ -107,6 +123,8 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
         long chunk = ChunkSectionPos.asLong(getSectionCoord(x), getSectionCoord(y), getSectionCoord(z));
 
+        BlockState state = this.getBlockStateForLighting(x, y, z);
+
         for (Direction dir : DIRECTIONS) {
             int adjX = x + dir.getOffsetX();
             int adjY = y + dir.getOffsetY();
@@ -115,7 +133,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             long adjChunk = ChunkSectionPos.asLong(getSectionCoord(adjX), getSectionCoord(adjY), getSectionCoord(adjZ));
 
             if ((chunk == adjChunk) || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(adjChunk)) {
-                this.propagateLevel(id, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
+                this.propagateLevel(id, state, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
             }
         }
     }

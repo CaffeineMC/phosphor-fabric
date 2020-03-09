@@ -4,6 +4,7 @@ import me.jellysquid.mods.phosphor.common.chunk.ExtendedBlockState;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
 import me.jellysquid.mods.phosphor.common.util.cache.LightEngineBlockAccess;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
@@ -48,6 +49,10 @@ public class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S exten
     // [VanillaCopy] method_20479
     @Override
     public BlockState getBlockStateForLighting(int x, int y, int z) {
+        if (y < 0 || y >= 256) {
+            return Blocks.AIR.getDefaultState();
+        }
+
         return this.blockAccess.getBlockState(x, y, z);
     }
 
@@ -66,6 +71,10 @@ public class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S exten
     // [VanillaCopy] method_20479
     @Override
     public VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir) {
+        if (state == null) {
+            return VoxelShapes.empty();
+        }
+
         ExtendedBlockState estate = ((ExtendedBlockState) state);
 
         VoxelShape shape = estate.getCachedExtrudedFace(dir);
@@ -80,6 +89,10 @@ public class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S exten
     // [VanillaCopy] method_20479
     @Override
     public VoxelShape getOpaqueShape(int x, int y, int z, Direction dir) {
+        if (y < 0 || y >= 256) {
+            return VoxelShapes.empty();
+        }
+
         BlockState state = this.blockAccess.getBlockState(x, y, z);
 
         if (state == null) {

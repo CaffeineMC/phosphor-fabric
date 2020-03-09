@@ -22,48 +22,60 @@ public class LightEngineBlockAccess {
     }
 
     public BlockState getBlockState(int x, int y, int z) {
-        if (y < 0 || y >= 256) {
-            return DEFAULT_STATE;
+        ChunkSection[] sections = this.getCachedSection(x >> 4, z >> 4);
+
+        if (sections != null) {
+            ChunkSection section = sections[y >> 4];
+
+            if (section == null) {
+                return DEFAULT_STATE;
+            }
+
+            return section.getBlockState(x & 15, y & 15, z & 15);
         }
 
-        int chunkX = x >> 4;
-        int chunkZ = z >> 4;
+        return null;
+    }
 
-        long pos = ChunkPos.toLong(chunkX, chunkZ);
+    private ChunkSection[] getCachedSection(int x, int z) {
+        long[] cachedCoords = this.cachedCoords;
 
-        ChunkSection[] sections;
+        long coord = ChunkPos.toLong(x, z);
 
-        if (this.cachedCoords[0] == pos) {
-            sections = this.cachedSectionArrays[0];
-        } else if (this.cachedCoords[1] == pos) {
-            sections = this.cachedSectionArrays[1];
-        } else {
-            sections = this.getSectionArray(chunkX, chunkZ);
-
-            this.cachedSectionArrays[1] = this.cachedSectionArrays[0];
-            this.cachedSectionArrays[0] = sections;
-
-            this.cachedCoords[1] = this.cachedCoords[0];
-            this.cachedCoords[0] = pos;
+        for (int i = 0; i < cachedCoords.length; i++) {
+            if (cachedCoords[i] == coord) {
+                return this.cachedSectionArrays[i];
+            }
         }
 
-        if (sections == null) {
+        return this.retrieveChunkSection(coord, x, z);
+    }
+
+    private ChunkSection[] retrieveChunkSection(long coord, int x, int z) {
+        ChunkSection[] sections = this.retrieveChunkSections(x, z);
+        this.addToCache(coord, sections);
+
+        return sections;
+    }
+
+    private ChunkSection[] retrieveChunkSections(int chunkX, int chunkZ) {
+        Chunk chunk = (Chunk) this.chunkProvider.getChunk(chunkX, chunkZ);
+
+        if (chunk == null) {
             return null;
         }
 
-        ChunkSection section = sections[y >> 4];
-
-        if (section == null) {
-            return DEFAULT_STATE;
-        }
-
-        return section.getBlockState(x & 15, y & 15, z & 15);
+        return chunk.getSectionArray();
     }
 
-    private ChunkSection[] getSectionArray(int chunkX, int chunkZ) {
-        Chunk chunk = (Chunk) this.chunkProvider.getChunk(chunkX, chunkZ);
+    private void addToCache(long coord, ChunkSection[] sections) {
+        ChunkSection[][] cachedSections = this.cachedSectionArrays;
+        cachedSections[1] = cachedSections[0];
+        cachedSections[0] = sections;
 
-        return chunk != null ? chunk.getSectionArray() : null;
+        long[] cachedCoords = this.cachedCoords;
+        cachedCoords[1] = cachedCoords[0];
+        cachedCoords[0] = coord;
     }
 
     public void reset() {
