@@ -17,8 +17,7 @@ public abstract class MixinChunkNibbleArray {
     protected byte[] byteArray;
 
     /**
-     * Avoids an additional branch.
-     *
+     * @reason Avoid an additional branch.
      * @author JellySquid
      */
     @Overwrite
@@ -35,9 +34,7 @@ public abstract class MixinChunkNibbleArray {
     }
 
     /**
-     * Avoids an additional branch.
-     * TODO: Benchmark whether or not the ~ operator is still slower than a cached array in Java 9+
-     *
+     * @reason Avoid an additional branch.
      * @author JellySquid
      */
     @Overwrite

@@ -74,6 +74,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
      * Replaces the two set of calls to unpack the XYZ coordinates from the input to just one, storing the result as local
      * variables.
      *
+     * @reason Use faster implementation
      * @author JellySquid
      */
     @Overwrite
@@ -97,6 +98,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
      * Our implementation here avoids this by pre-calculating the min/max chunk coordinates so we can iterate over only
      * the relevant chunk positions once. This reduces what would always be 27 iterations to just 1-8 iterations.
      *
+     * @reason Use faster implementation
      * @author JellySquid
      */
     @Overwrite
@@ -127,6 +129,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
      * Combines the contains/remove call to the queued removals set into a single remove call. See {@link MixinLightStorage#set(long, int)}
      * for additional information.
      *
+     * @reason Use faster implementation
      * @author JellySquid
      */
     @Overwrite

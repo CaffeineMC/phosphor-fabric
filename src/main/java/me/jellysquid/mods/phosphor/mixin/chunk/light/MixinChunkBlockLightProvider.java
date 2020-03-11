@@ -111,7 +111,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
     /**
      * Avoids constantly (un)packing coordinates. This strictly copies vanilla's implementation.
-     *
+     * @reason Use faster implementation
      * @author JellySquid
      */
     @Override
