@@ -157,9 +157,10 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * - Coordinate re-packing is removed where unnecessary (such as when only comparing the Y-coordinate of two positions)
      * - A special propagation method is used that allows the BlockState at {@param id} to be passed, allowing the code
      * which follows to simply re-use it instead of redundantly retrieving another block state.
-     * <p>
+     *
      * This copies the vanilla implementation as close as possible.
      *
+     * @reason Use faster implementation
      * @author JellySquid
      */
     @Override

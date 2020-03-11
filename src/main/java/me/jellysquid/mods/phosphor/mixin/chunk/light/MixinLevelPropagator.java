@@ -60,6 +60,7 @@ public abstract class MixinLevelPropagator implements ExtendedLevelPropagator {
     }
 
     /**
+     * @reason Redirect to our custom update tracker
      * @author JellySquid
      */
     @Overwrite
@@ -78,6 +79,7 @@ public abstract class MixinLevelPropagator implements ExtendedLevelPropagator {
     }
 
     /**
+     * @reason Redirect to our custom update tracker
      * @author JellySquid
      */
     @Overwrite
@@ -95,6 +97,7 @@ public abstract class MixinLevelPropagator implements ExtendedLevelPropagator {
     }
 
     /**
+     * @reason Redirect to our custom update tracker
      * @author JellySquid
      */
     @Overwrite
@@ -111,6 +114,7 @@ public abstract class MixinLevelPropagator implements ExtendedLevelPropagator {
     }
 
     /**
+     * @reason Redirect to our custom update tracker
      * @author JellySquid
      */
     @Overwrite
@@ -125,6 +129,7 @@ public abstract class MixinLevelPropagator implements ExtendedLevelPropagator {
     }
 
     /**
+     * @reason Redirect to our custom update tracker
      * @author JellySquid
      */
     @Overwrite

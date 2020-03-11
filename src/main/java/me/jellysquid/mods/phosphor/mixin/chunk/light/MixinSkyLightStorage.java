@@ -33,6 +33,7 @@ public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
     /**
      * An optimized implementation which avoids constantly unpacking and repacking integer coordinates.
      *
+     * @reason Use faster implementation
      * @author JellySquid
      */
     @SuppressWarnings({"ConstantConditions", "unchecked"})
