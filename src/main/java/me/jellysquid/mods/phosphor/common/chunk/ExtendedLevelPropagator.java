@@ -15,4 +15,9 @@ public interface ExtendedLevelPropagator {
      * block state belonging to {@param sourceId}.
      */
     int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level);
+
+    /**
+     * Removes all pending light updates within the specified sub-chunk.
+     */
+    void cancelUpdatesForChunk(long chunkPos);
 }

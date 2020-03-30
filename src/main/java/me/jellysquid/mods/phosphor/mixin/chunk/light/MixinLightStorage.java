@@ -1,13 +1,18 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.LongSet;
+import me.jellysquid.mods.phosphor.common.chunk.ExtendedLevelPropagator;
 import me.jellysquid.mods.phosphor.common.chunk.ExtendedLightStorage;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
+import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightStorage;
 import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LightStorage.class)
 public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements ExtendedLightStorage<M> {
@@ -173,6 +178,20 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
 
         this.hasLightUpdates = !this.lightArraysToRemove.isEmpty();
     }
+
+    /**
+     * @reason Drastically improve efficiency by making removals O(n) instead of O(16*16*16)
+     * @author JellySquid
+     */
+    @Inject(method = "removeChunkData", at = @At("HEAD"), cancellable = true)
+    protected void removeChunkData(ChunkLightProvider<?, ?> provider, long pos, CallbackInfo ci) {
+        if (provider instanceof ExtendedLevelPropagator) {
+            ((ExtendedLevelPropagator) provider).cancelUpdatesForChunk(pos);
+
+            ci.cancel();
+        }
+    }
+
 
     @Override
     public boolean bridge$hasChunk(long chunkPos) {
