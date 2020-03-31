@@ -1,17 +1,24 @@
 plugins {
-	id 'fabric-loom' version '0.2.6-SNAPSHOT'
-	id 'maven-publish'
-	id "me.champeau.gradle.jmh" version "0.5.0"
+	id 'fabric-loom' version '0.2.7-SNAPSHOT'
+    id "com.matthewprenger.cursegradle" version "1.4.0"
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
-archivesBaseName = "${project.archives_base_name}-mc${project.minecraft_version}-fabric"
-version = project.mod_version
+archivesBaseName = "${project.archives_base_name}-mc${project.minecraft_version}"
 group = project.maven_group
 
+def build_id = System.getenv("GITHUB_RUN_NUMBER");
+
+if (build_id == null) {
+    version = "${project.mod_version}-SNAPSHOT"
+} else {
+    version = "${project.mod_version}+build.${build_id}"
+}
+
 minecraft {
+    refmapName = "mixins.phosphor.refmap.json"
 }
 
 dependencies {
@@ -54,28 +61,27 @@ jar {
 	from "LICENSE"
 }
 
-// configure the maven publication
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			// add all the jars that should be included when publishing to maven
-			artifact(remapJar) {
-				builtBy remapJar
-			}
-			artifact(sourcesJar) {
-				builtBy remapSourcesJar
-			}
-		}
-	}
+def cf_api_token = System.getenv("CF_API_TOKEN")
 
-	// select the repositories you want to publish to
-	repositories {
-		// uncomment to publish to the local maven
-		// mavenLocal()
-	}
-}
+curseforge {
+    // If the environment variable does not exist,
+    apiKey cf_api_token == null ? "" : cf_api_token
 
+    project {
+        id = project.cf_project_id
+        releaseType = 'beta'
 
-jmh {
-	duplicateClassesStrategy = 'warn'
+        addGameVersion project.cf_game_version
+
+        def displayNameBase = "${project.cf_project_name} mc${project.minecraft_version}-${project.version}"
+
+        mainArtifact(remapJar) {
+            displayName = displayNameBase
+        }
+    }
+
+    options {
+        javaIntegration = false
+        forgeGradleIntegration = false
+    }
 }

@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(AbstractBlock.AbstractBlockState.class)
 public abstract class MixinAbstractBlockState implements ExtendedBlockState {
     @Shadow
-    public abstract VoxelShape method_26201(BlockView view, BlockPos pos);
+    public abstract VoxelShape getCullingShape(BlockView view, BlockPos pos);
 
     @Shadow
     public abstract Block getBlock();
@@ -61,7 +61,7 @@ public abstract class MixinAbstractBlockState implements ExtendedBlockState {
 
     @Override
     public VoxelShape getDynamicExtrudedFace(BlockView view, BlockPos pos, Direction dir) {
-        return VoxelShapes.extrudeFace(this.method_26201(view, pos), dir);
+        return VoxelShapes.extrudeFace(this.getCullingShape(view, pos), dir);
     }
 
     @Override
