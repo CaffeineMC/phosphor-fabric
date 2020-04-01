@@ -76,14 +76,14 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         if (shapeCache != null) {
             return shapeCache.getLightSubtracted();
         } else {
-            return state.getOpacity(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
+            return state.getBlock().getOpacity(state, this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
         }
     }
 
     // [VanillaCopy] method_20479
     @Override
     public VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir) {
-        if (state == null) {
+        if (state == null || !state.hasSidedTransparency()) {
             return VoxelShapes.empty();
         }
 
@@ -98,7 +98,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
             return VoxelShapes.empty();
         } else {
-            return state.getCullingFace(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z), dir);
+            return VoxelShapes.extrudeFace(state.getCullingShape(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z)), dir);
         }
     }
 
