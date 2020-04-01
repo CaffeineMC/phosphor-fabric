@@ -12,7 +12,8 @@
         "chunk.light.MixinLevelPropagator",
         "chunk.MixinChunkNibbleArray",
         "chunk.MixinWorldChunk",
-        "block.MixinAbstractBlockState"
+        "block.MixinAbstractBlockState",
+        "block.MixinShapeCache"
     ],
     "injectors": {
         "defaultRequire": 1

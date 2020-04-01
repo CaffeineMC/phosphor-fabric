@@ -1,7 +1,30 @@
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            name = "Fabric"
+            url = "https://maven.fabricmc.net/"
+        }
+        maven {
+            name = "Forge"
+            url = "https://files.minecraftforge.net/maven/"
+        }
+        maven {
+            name = "Jitpack"
+            url 'https://jitpack.io/'
+        }
+    }
+    dependencies {
+        classpath 'com.github.Chocohead:fabric-loom:e5d69cb'
+    }
+}
+
 plugins {
-	id 'fabric-loom' version '0.2.7-SNAPSHOT'
     id "com.matthewprenger.cursegradle" version "1.4.0"
 }
+
+apply plugin: "fabric-loom"
+import net.fabricmc.loom.task.RemappingJar;
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
@@ -19,6 +42,12 @@ if (build_id == null) {
 
 minecraft {
     refmapName = "mixins.phosphor.refmap.json"
+    AT = file("src/main/resources/access-transformers.txt")
+}
+
+repositories {
+    // Fabric-ASM
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
@@ -26,6 +55,9 @@ dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 	modCompile "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    include "com.github.Chocohead:Fabric-ASM:${project.fabric_asm_version}"
+    compile "com.github.Chocohead:Fabric-ASM:${project.fabric_asm_version}:dev"
 }
 
 processResources {
@@ -58,8 +90,15 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 }
 
 jar {
-	from "LICENSE"
+    from "LICENSE.txt"
 }
+
+task modJar(type: RemappingJar, dependsOn: classes) {
+    classifier = "mod"
+    from sourceSets.main.output
+}
+
+build.dependsOn modJar
 
 def cf_api_token = System.getenv("CF_API_TOKEN")
 
@@ -75,7 +114,7 @@ curseforge {
 
         def displayNameBase = "${project.cf_project_name} mc${project.minecraft_version}-${project.version}"
 
-        mainArtifact(remapJar) {
+        mainArtifact(modJar) {
             displayName = displayNameBase
         }
     }

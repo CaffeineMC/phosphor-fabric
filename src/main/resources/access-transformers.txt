@@ -1,0 +1,4 @@
+net/minecraft/block/AbstractBlock$AbstractBlockState$ShapeCache
+net/minecraft/world/chunk/light/LightStorage hasLight(J)Z
+net/minecraft/world/chunk/light/SkyLightStorage method_15565(J)Z
+net/minecraft/world/chunk/light/SkyLightStorage isAboveMinimumHeight(I)Z

@@ -1,8 +1,8 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.LongSet;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedLevelPropagator;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedLightStorage;
+import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.chunk.ChunkNibbleArray;
@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LightStorage.class)
-public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements ExtendedLightStorage<M> {
+public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements LightStorageAccess<M> {
     @Shadow
     @Final
     protected M lightArrays;
@@ -32,9 +32,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     @Shadow
     @Final
     protected LongSet dirtySections;
-
-    @Shadow
-    protected abstract boolean hasLight(long chunkPos);
 
     @Shadow
     protected abstract int getLevel(long id);
@@ -61,9 +58,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
 
     @Shadow
     protected abstract void onLightArrayCreated(long blockPos);
-
-    @Shadow
-    public abstract ChunkNibbleArray getLightArray(long chunkPos);
 
     @SuppressWarnings("unused")
     @Shadow
@@ -185,26 +179,15 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
      */
     @Inject(method = "removeChunkData", at = @At("HEAD"), cancellable = true)
     protected void removeChunkData(ChunkLightProvider<?, ?> provider, long pos, CallbackInfo ci) {
-        if (provider instanceof ExtendedLevelPropagator) {
-            ((ExtendedLevelPropagator) provider).cancelUpdatesForChunk(pos);
+        if (provider instanceof ChunkLightProviderExtended) {
+            ((ChunkLightProviderExtended) provider).cancelUpdatesForChunk(pos);
 
             ci.cancel();
         }
     }
 
-
     @Override
-    public boolean bridge$hasChunk(long chunkPos) {
-        return this.hasLight(chunkPos);
-    }
-
-    @Override
-    public ChunkNibbleArray bridge$getDataForChunk(M data, long chunkPos) {
-        return data.get(chunkPos);
-    }
-
-    @Override
-    public M bridge$getStorageUncached() {
+    public M getStorageUncached() {
         return this.uncachedLightArrays;
     }
 }

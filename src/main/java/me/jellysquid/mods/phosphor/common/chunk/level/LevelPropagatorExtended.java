@@ -1,9 +1,9 @@
-package me.jellysquid.mods.phosphor.common.chunk;
+package me.jellysquid.mods.phosphor.common.chunk.level;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.world.chunk.light.LevelPropagator;
 
-public interface ExtendedLevelPropagator {
+public interface LevelPropagatorExtended {
     /**
      * Mirrors {@link LevelPropagator#propagateLevel(long, int, boolean)}, but allows a block state to be passed to
      * prevent subsequent lookup later.
@@ -15,9 +15,4 @@ public interface ExtendedLevelPropagator {
      * block state belonging to {@param sourceId}.
      */
     int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level);
-
-    /**
-     * Removes all pending light updates within the specified sub-chunk.
-     */
-    void cancelUpdatesForChunk(long chunkPos);
 }
