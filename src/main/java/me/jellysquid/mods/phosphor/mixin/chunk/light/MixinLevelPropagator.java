@@ -81,7 +81,7 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, P
     private byte redirectAddPendingUpdate(Long2ByteMap map, long key, byte value) {
         byte ret = map.put(key, value);
 
-        if (ret != map.defaultReturnValue()) {
+        if (ret == map.defaultReturnValue()) {
             this.onPendingUpdateAdded(key);
         }
 

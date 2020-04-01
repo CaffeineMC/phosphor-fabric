@@ -22,6 +22,10 @@ public class LightEngineBlockAccess {
     }
 
     public BlockState getBlockState(int x, int y, int z) {
+        if (y < 0 || y >= 256) {
+            return DEFAULT_STATE;
+        }
+
         ChunkSection[] sections = this.getCachedSection(x >> 4, z >> 4);
 
         if (sections != null) {
