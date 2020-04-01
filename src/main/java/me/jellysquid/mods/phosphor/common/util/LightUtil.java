@@ -17,16 +17,29 @@ public class LightUtil {
             return true;
         }
 
+        // If both shapes are the same, it is pointless to merge them
+        if (a == b) {
+            return coversFullCube(a);
+        }
+
         boolean ae = a == VoxelShapes.empty() || a.isEmpty();
         boolean be = b == VoxelShapes.empty() || b.isEmpty();
 
-        // If both shapes are empty, they can never overlap
+        // If both shapes are empty, they can never overlap a full cube
         if (ae && be) {
             return false;
         }
 
-        // Test each shape individually if they're non-empty and fail fast
-        return (ae || !VoxelShapes.matchesAnywhere(VoxelShapes.fullCube(), a, BooleanBiFunction.ONLY_FIRST)) &&
-                (be || !VoxelShapes.matchesAnywhere(VoxelShapes.fullCube(), b, BooleanBiFunction.ONLY_FIRST));
+        // If one of the shapes is empty, we can skip merging as any shape merged with an empty shape is the same shape
+        if (ae || be) {
+            return coversFullCube(ae ? b : a);
+        }
+
+        // No special optimizations can be performed, so we need to merge both shapes and test them
+        return coversFullCube(VoxelShapes.combine(a, b, BooleanBiFunction.OR));
+    }
+
+    private static boolean coversFullCube(VoxelShape shape) {
+        return !VoxelShapes.matchesAnywhere(VoxelShapes.fullCube(), shape, BooleanBiFunction.ONLY_FIRST);
     }
 }
