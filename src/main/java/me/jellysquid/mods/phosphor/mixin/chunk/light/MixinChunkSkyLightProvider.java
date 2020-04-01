@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
+import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
@@ -114,7 +115,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             if (toShape != VoxelShapes.fullCube()) {
                 VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
 
-                if (VoxelShapes.unionCoversFullCube(fromShape, toShape)) {
+                if (LightUtil.unionCoversFullCube(fromShape, toShape)) {
                     return 15;
                 }
             }
@@ -127,13 +128,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
             VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, altDir.getOpposite());
 
-            if (VoxelShapes.unionCoversFullCube(VoxelShapes.empty(), toShape)) {
+            if (LightUtil.unionCoversFullCube(VoxelShapes.empty(), toShape)) {
                 return 15;
             }
 
             VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, Direction.DOWN);
 
-            if (VoxelShapes.unionCoversFullCube(fromShape, VoxelShapes.empty())) {
+            if (LightUtil.unionCoversFullCube(fromShape, VoxelShapes.empty())) {
                 return 15;
             }
         }
