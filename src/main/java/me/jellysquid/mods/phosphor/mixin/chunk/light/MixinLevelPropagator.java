@@ -66,25 +66,26 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, P
         return this.getPropagatedLevel(sourceId, targetId, level);
     }
 
-    @Redirect(method = "removePendingUpdate(JIIZ)V", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ByteMap;remove(J)B", remap = false))
+    @Redirect(method = { "removePendingUpdate(JIIZ)V", "applyPendingUpdates" }, at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ByteMap;remove(J)B", remap = false))
     private byte redirectRemovePendingUpdate(Long2ByteMap map, long key) {
-        this.onPendingUpdateRemoved(key);
+        byte ret = map.remove(key);
 
-        return map.remove(key);
+        if (ret != map.defaultReturnValue()) {
+            this.onPendingUpdateRemoved(key);
+        }
+
+        return ret;
     }
 
     @Redirect(method = "addPendingUpdate", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ByteMap;put(JB)B", remap = false))
     private byte redirectAddPendingUpdate(Long2ByteMap map, long key, byte value) {
-        this.onPendingUpdateAdded(key);
+        byte ret = map.put(key, value);
 
-        return map.put(key, value);
-    }
+        if (ret != map.defaultReturnValue()) {
+            this.onPendingUpdateAdded(key);
+        }
 
-    @Redirect(method = "applyPendingUpdates", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ByteMap;remove(J)B", remap = false))
-    private byte redirectApplyPendingUpdate(Long2ByteMap map, long key) {
-        this.onPendingUpdateRemoved(key);
-
-        return map.remove(key);
+        return ret;
     }
 
     @Override
