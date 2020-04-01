@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
+import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -100,7 +101,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             VoxelShape aShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
             VoxelShape bShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
 
-            if (!VoxelShapes.unionCoversFullCube(aShape, bShape)) {
+            if (!LightUtil.unionCoversFullCube(aShape, bShape)) {
                 return currentLevel + Math.max(1, newLevel);
             }
         }

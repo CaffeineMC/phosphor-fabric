@@ -1,19 +1,32 @@
 package me.jellysquid.mods.phosphor.common.util;
 
-import net.minecraft.util.math.Direction;
+import net.minecraft.util.function.BooleanBiFunction;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 
-import java.util.Arrays;
-
 public class LightUtil {
-    public static final Direction[] DIRECTIONS = Direction.values();
+    /**
+     * Replacement for {@link VoxelShapes#unionCoversFullCube(VoxelShape, VoxelShape)}. This implementation early-exits
+     * in some common situations to avoid unnecessary computation.
+     *
+     * @author JellySquid
+     */
+    public static boolean unionCoversFullCube(VoxelShape a, VoxelShape b) {
+        // At least one shape is a full cube and will match
+        if (a == VoxelShapes.fullCube() || b == VoxelShapes.fullCube()) {
+            return true;
+        }
 
-    public static final VoxelShape[] EMPTY_LIGHT_SHAPES = new VoxelShape[DIRECTIONS.length];
-    public static final VoxelShape[] NULL_LIGHT_SHAPES = new VoxelShape[DIRECTIONS.length];
+        boolean ae = a == VoxelShapes.empty() || a.isEmpty();
+        boolean be = b == VoxelShapes.empty() || b.isEmpty();
 
+        // If both shapes are empty, they can never overlap
+        if (ae && be) {
+            return false;
+        }
 
-    static {
-        Arrays.fill(EMPTY_LIGHT_SHAPES, VoxelShapes.empty());
+        // Test each shape individually if they're non-empty and fail fast
+        return (ae || !VoxelShapes.matchesAnywhere(VoxelShapes.fullCube(), a, BooleanBiFunction.ONLY_FIRST)) &&
+                (be || !VoxelShapes.matchesAnywhere(VoxelShapes.fullCube(), b, BooleanBiFunction.ONLY_FIRST));
     }
 }
