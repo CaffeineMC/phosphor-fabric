@@ -87,15 +87,12 @@ tasks.withType(JavaCompile) {
 task sourcesJar(type: Jar, dependsOn: classes) {
 	classifier = "sources"
 	from sourceSets.main.allSource
-}
-
-jar {
-    from "LICENSE.txt"
+    from "LICENSE"
 }
 
 task modJar(type: RemappingJar, dependsOn: classes) {
-    classifier = "mod"
     from sourceSets.main.output
+    from "LICENSE"
 }
 
 build.dependsOn modJar
