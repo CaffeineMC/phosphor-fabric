@@ -1,8 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedLightStorage;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorageData;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
+import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -10,33 +9,16 @@ import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.light.SkyLightStorage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(SkyLightStorage.class)
-public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
-    @Shadow
-    protected abstract boolean method_15565(long l);
-
-    @Shadow
-    protected abstract boolean isAboveMinimumHeight(int blockY);
-
-    @Override
-    public boolean bridge$method_15565(long l) {
-        return this.method_15565(l);
-    }
-
-    @Override
-    public boolean bridge$isAboveMinimumHeight(int blockY) {
-        return this.isAboveMinimumHeight(blockY);
-    }
-
+public abstract class MixinSkyLightStorage {
     /**
      * An optimized implementation which avoids constantly unpacking and repacking integer coordinates.
      *
      * @reason Use faster implementation
      * @author JellySquid
      */
-    @SuppressWarnings({"ConstantConditions", "unchecked"})
+    @SuppressWarnings({"unchecked"})
     @Overwrite
     public int getLight(long pos) {
         int posX = BlockPos.unpackLongX(pos);
@@ -49,36 +31,34 @@ public abstract class MixinSkyLightStorage implements ExtendedSkyLightStorage {
 
         long chunk = ChunkSectionPos.asLong(chunkX, chunkY, chunkZ);
 
-        SkyLightStorage.Data data = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getStorageUncached();
+        SkyLightStorage.Data data = ((LightStorageAccess<SkyLightStorage.Data>) this).getStorageUncached();
+        SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
 
-        int h = ((ExtendedSkyLightStorageData) (Object) data).bridge$heightMap().get(ChunkSectionPos.withZeroZ(chunk));
+        int height = sdata.getHeightMap().get(ChunkSectionPos.withZeroZ(chunk));
 
-        if (h != ((ExtendedSkyLightStorageData) (Object) data).bridge$defaultHeight() && chunkY < h) {
-            ChunkNibbleArray array = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getDataForChunk(data, chunk);
-
-            if (array == null) {
-                posY &= -16;
-
-                while (array == null) {
-                    ++chunkY;
-
-                    if (chunkY >= h) {
-                        return 15;
-                    }
-
-                    chunk = ChunkSectionPosHelper.updateYLong(chunk, chunkY);
-                    posY += 16;
-                    array = ((ExtendedLightStorage<SkyLightStorage.Data>) this).bridge$getDataForChunk(data, chunk);
-                }
-            }
-
-            return array.get(
-                    ChunkSectionPos.getLocalCoord(posX),
-                    ChunkSectionPos.getLocalCoord(posY),
-                    ChunkSectionPos.getLocalCoord(posZ)
-            );
-        } else {
+        if (height == sdata.getDefaultHeight() || chunkY >= height) {
             return 15;
         }
+
+        ChunkNibbleArray array = data.get(chunk);
+
+        while (array == null) {
+            ++chunkY;
+
+            if (chunkY >= height) {
+                return 15;
+            }
+
+            chunk = ChunkSectionPosHelper.updateYLong(chunk, chunkY);
+            array = data.get(chunk);
+
+            posY = chunkY << 4;
+        }
+
+        return array.get(
+                ChunkSectionPos.getLocalCoord(posX),
+                ChunkSectionPos.getLocalCoord(posY),
+                ChunkSectionPos.getLocalCoord(posZ)
+        );
     }
 }

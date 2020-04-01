@@ -1,9 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedLevelPropagator;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedSkyLightStorage;
+import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
+import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
@@ -27,7 +25,7 @@ import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @Mixin(ChunkSkyLightProvider.class)
 public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage>
-        implements ExtendedLevelPropagator, ExtendedChunkLightProvider {
+        implements LevelPropagatorExtended, ChunkLightProviderExtended {
     @Shadow
     @Final
     private static Direction[] HORIZONTAL_DIRECTIONS;
@@ -71,7 +69,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         }
 
         if (fromId == Long.MAX_VALUE) {
-            if (((ExtendedSkyLightStorage) this.lightStorage).bridge$method_15565(toId)) {
+            if (this.lightStorage.method_15565(toId)) {
                 currentLevel = 0;
             } else {
                 return 15;
@@ -192,8 +190,8 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
         // Skylight optimization: Try to find bottom-most non-empty chunk
         if (localY == 0) {
-            while (!((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPos.offset(chunkId, 0, -chunkOffsetY - 1, 0))
-                    && ((ExtendedSkyLightStorage) this.lightStorage).bridge$isAboveMinimumHeight(chunkY - chunkOffsetY - 1)) {
+            while (!this.lightStorage.hasLight(ChunkSectionPos.offset(chunkId, 0, -chunkOffsetY - 1, 0))
+                    && this.lightStorage.isAboveMinimumHeight(chunkY - chunkOffsetY - 1)) {
                 ++chunkOffsetY;
             }
         }
@@ -201,14 +199,14 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int belowY = y + (-1 - chunkOffsetY * 16);
         int belowChunkY = getSectionCoord(belowY);
 
-        if (chunkY == belowChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
+        if (chunkY == belowChunkY || this.lightStorage.hasLight(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
             this.propagateLevel(id, fromState, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
         }
 
         int aboveY = y + 1;
         int aboveChunkY = getSectionCoord(aboveY);
 
-        if (chunkY == aboveChunkY || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(ChunkSectionPosHelper.updateYLong(chunkId, aboveChunkY))) {
+        if (chunkY == aboveChunkY || this.lightStorage.hasLight(ChunkSectionPosHelper.updateYLong(chunkId, aboveChunkY))) {
             this.propagateLevel(id, fromState, BlockPos.asLong(x, aboveY, z), targetLevel, mergeAsMin);
         }
 
@@ -226,7 +224,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
                 boolean flag = chunkId == offsetChunkId;
 
-                if (flag || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(offsetChunkId)) {
+                if (flag || this.lightStorage.hasLight(offsetChunkId)) {
                     this.propagateLevel(id, fromState, offsetId, targetLevel, mergeAsMin);
                 }
 

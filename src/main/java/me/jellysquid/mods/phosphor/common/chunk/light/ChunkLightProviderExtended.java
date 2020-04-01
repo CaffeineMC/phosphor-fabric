@@ -1,10 +1,10 @@
-package me.jellysquid.mods.phosphor.common.chunk;
+package me.jellysquid.mods.phosphor.common.chunk.light;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 
-public interface ExtendedChunkLightProvider {
+public interface ChunkLightProviderExtended {
     /**
      * Returns the BlockState which represents the block at the specified coordinates in the world. This may return
      * a different BlockState than what actually exists at the coordinates (such as if it is out of bounds), but will
@@ -19,16 +19,12 @@ public interface ExtendedChunkLightProvider {
 
     /**
      * Returns the VoxelShape of a block for lighting without making a second call to
-     * {@link ExtendedChunkLightProvider#getBlockStateForLighting(int, int, int)}.
+     * {@link ChunkLightProviderExtended#getBlockStateForLighting(int, int, int)}.
      */
     VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir);
 
-
     /**
-     * Returns the VoxelShape of a block for lighting. This will call
-     * {@link ExtendedChunkLightProvider#getBlockStateForLighting(int, int, int)} to retrieve the block state
-     * at the specified coordinates. You should prefer the variant of this method which consumes a BlockState if you
-     * already have obtained it prior as it will be faster.
+     * Discards all pending updates for the specified chunk section.
      */
-    VoxelShape getOpaqueShape(int x, int y, int z, Direction dir);
+    void cancelUpdatesForChunk(long sectionPos);
 }

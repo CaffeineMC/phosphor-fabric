@@ -1,8 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedChunkLightProvider;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedGenericLightStorage;
-import me.jellysquid.mods.phosphor.common.chunk.ExtendedLevelPropagator;
+import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
+import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -24,7 +23,7 @@ import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @Mixin(ChunkBlockLightProvider.class)
 public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<BlockLightStorage.Data, BlockLightStorage>
-        implements ExtendedLevelPropagator, ExtendedChunkLightProvider {
+        implements LevelPropagatorExtended, ChunkLightProviderExtended {
     public MixinChunkBlockLightProvider(ChunkProvider chunkProvider, LightType type, BlockLightStorage lightStorage) {
         super(chunkProvider, type, lightStorage);
     }
@@ -132,7 +131,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
             long adjChunk = ChunkSectionPos.asLong(getSectionCoord(adjX), getSectionCoord(adjY), getSectionCoord(adjZ));
 
-            if ((chunk == adjChunk) || ((ExtendedGenericLightStorage) this.lightStorage).bridge$hasChunk(adjChunk)) {
+            if ((chunk == adjChunk) || this.lightStorage.hasLight(adjChunk)) {
                 this.propagateLevel(id, state, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
             }
         }
