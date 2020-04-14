@@ -12,8 +12,9 @@ public abstract class MixinAbstractBlockState implements AbstractBlockStateAcces
     @Shadow
     protected AbstractBlock.AbstractBlockState.ShapeCache shapeCache;
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     public ShapeCacheAccess getShapeCache() {
-        return (ShapeCacheAccess) this.shapeCache;
+        return (ShapeCacheAccess) (Object) this.shapeCache;
     }
 }
