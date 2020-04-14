@@ -22,6 +22,7 @@
   "mixins": [
     "phosphor.mixins.json"
   ],
+  "accessWidener": "phosphor.accesswidener",
   "depends": {
     "fabricloader": ">=0.8.0"
   }
