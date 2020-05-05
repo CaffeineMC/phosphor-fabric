@@ -15,7 +15,7 @@ with many Minecraft mods (so long as they do not make drastic changes to how the
 
 ### Support development
 
-You can help buy me food and support development of my mods by [making a monthly pledge to my Patreon!](https://patreon.com/jellysquid) You'll also gain some special perks, such as prioritized support on [my Discord server](https://discord.gg/kcb57Cm).
+You can help buy me food and support development of my mods by [making a monthly pledge to my Patreon!](https://patreon.com/jellysquid) You'll also gain some special perks, such as prioritized support on [my Discord server](https://jellysquid.me/discord).
 
 <a href="https://www.patreon.com/bePatron?u=824442"><img src="https://github.com/jellysquid3/phosphor-fabric/raw/1.15.x/dev/doc/patreon.png" width="200"></a>
 
