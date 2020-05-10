@@ -258,7 +258,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
         this.lightArraysToRemove.clear();
         this.hasLightUpdates = false;
 
-        ObjectIterator<Long2ObjectMap.Entry<ChunkNibbleArray>> addQueue = getFastIterator(this.lightArraysToAdd);
+        ObjectIterator<Long2ObjectMap.Entry<ChunkNibbleArray>> addQueue = Long2ObjectMaps.fastIterator(this.lightArraysToAdd);
 
         while (addQueue.hasNext()) {
             Long2ObjectMap.Entry<ChunkNibbleArray> entry = addQueue.next();
@@ -353,21 +353,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
 
         // Vanilla would normally iterate back over the map of light arrays to remove those we worked on, but
         // that is unneeded now because we removed them earlier.
-    }
-
-    /**
-     * Returns a fast iterator over the entries in {@param map}. If the collection type is not a fast type, then the
-     * fallback iterator is used. The fast iterator does not allocate a new object for each entry returned by the
-     * iterator, meaning that the result of {@link Iterator#next()} will always be the same object.
-     */
-    private static <T> ObjectIterator<Long2ObjectMap.Entry<T>> getFastIterator(Long2ObjectMap<T> map) {
-        if (map instanceof Long2ObjectOpenHashMap) {
-            return ((Long2ObjectOpenHashMap<T>) map).long2ObjectEntrySet().fastIterator();
-        } else if (map instanceof Long2ObjectLinkedOpenHashMap) {
-            return ((Long2ObjectLinkedOpenHashMap<T>) map).long2ObjectEntrySet().fastIterator();
-        } else {
-            return map.long2ObjectEntrySet().iterator();
-        }
     }
 
     @Override
