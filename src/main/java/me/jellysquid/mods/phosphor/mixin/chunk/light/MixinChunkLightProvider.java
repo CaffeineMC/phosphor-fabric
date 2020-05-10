@@ -102,6 +102,12 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         }
     }
 
+    @Override
+    public void spreadLightInto(long a, long b) {
+        this.updateLevel(a, b, this.getPropagatedLevel(a, b, this.getLevel(a)), false);
+        this.updateLevel(b, a, this.getPropagatedLevel(b, a, this.getLevel(b)), false);
+    }
+
     /**
      * The vanilla implementation for removing pending light updates requires iterating over either every queued light
      * update (<8K checks) or every block position within a sub-chunk (16^3 checks). This is painfully slow and results

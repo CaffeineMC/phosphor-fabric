@@ -1,10 +1,12 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
@@ -13,6 +15,8 @@ import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.Iterator;
 
 @Mixin(LightStorage.class)
 public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements LightStorageAccess<M> {
@@ -68,6 +72,30 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
 
     @Shadow
     protected abstract ChunkNibbleArray createLightArray(long pos);
+
+    @Shadow
+    @Final
+    protected Long2ObjectMap<ChunkNibbleArray> lightArraysToAdd;
+
+    @Shadow
+    protected abstract boolean hasLightUpdates();
+
+    @Shadow
+    @Final
+    private LongSet field_19342;
+
+    @Shadow
+    protected abstract void onChunkRemoved(long l);
+
+    @Shadow
+    public abstract boolean hasLight(long sectionPos);
+
+    @Shadow
+    @Final
+    private static Direction[] DIRECTIONS;
+
+    @Shadow
+    protected abstract void removeChunkData(ChunkLightProvider<?, ?> storage, long blockChunkPos);
 
     /**
      * Replaces the two set of calls to unpack the XYZ coordinates from the input to just one, storing the result as local
@@ -183,6 +211,154 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
             ((ChunkLightProviderExtended) provider).cancelUpdatesForChunk(pos);
 
             ci.cancel();
+        }
+    }
+
+    /**
+     * @reason Avoid integer boxing
+     * @author JellySquid
+     */
+    @Overwrite
+    public void updateLightArrays(ChunkLightProvider<M, ?> lightProvider, boolean doSkylight, boolean skipEdgeLightPropagation) {
+        if (!this.hasLightUpdates() && this.lightArraysToAdd.isEmpty()) {
+            return;
+        }
+
+        LongIterator it = this.lightArraysToRemove.iterator();
+
+        while (it.hasNext()) {
+            long pos = it.nextLong();
+
+            this.removeChunkData(lightProvider, pos);
+
+            ChunkNibbleArray pending = this.lightArraysToAdd.remove(pos);
+            ChunkNibbleArray existing = this.lightArrays.removeChunk(pos);
+
+            if (this.field_19342.contains(ChunkSectionPos.withZeroZ(pos))) {
+                if (pending != null) {
+                    this.lightArraysToAdd.put(pos, pending);
+                } else if (existing != null) {
+                    this.lightArraysToAdd.put(pos, existing);
+                }
+            }
+        }
+
+        this.lightArrays.clearCache();
+        it = this.lightArraysToRemove.iterator();
+
+        while (it.hasNext()) {
+            this.onChunkRemoved(it.nextLong());
+        }
+
+        this.lightArraysToRemove.clear();
+        this.hasLightUpdates = false;
+
+        ObjectIterator<Long2ObjectMap.Entry<ChunkNibbleArray>> addQueue = getFastIterator(this.lightArraysToAdd);
+
+        while (addQueue.hasNext()) {
+            Long2ObjectMap.Entry<ChunkNibbleArray> entry = addQueue.next();
+            long pos = entry.getLongKey();
+
+            if (this.hasLight(pos)) {
+                ChunkNibbleArray chunkNibbleArray3 = entry.getValue();
+
+                if (this.lightArrays.get(pos) != chunkNibbleArray3) {
+                    this.removeChunkData(lightProvider, pos);
+
+                    this.lightArrays.put(pos, chunkNibbleArray3);
+                    this.field_15802.add(pos);
+                }
+            }
+        }
+
+        this.lightArrays.clearCache();
+
+        if (!skipEdgeLightPropagation) {
+            it = this.lightArraysToAdd.keySet().iterator();
+
+            while (it.hasNext()) {
+                long pos = it.nextLong();
+
+                if (!this.hasLight(pos)) {
+                    continue;
+                }
+
+                int x = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getX(pos));
+                int y = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getY(pos));
+                int z = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getZ(pos));
+
+                for (Direction dir : DIRECTIONS) {
+                    long adjPos = ChunkSectionPos.offset(pos, dir);
+
+                    if (this.lightArraysToAdd.containsKey(adjPos) || !this.hasLight(adjPos)) {
+                        continue;
+                    }
+
+                    for (int q = 0; q < 16; ++q) {
+                        for (int r = 0; r < 16; ++r) {
+                            long a;
+                            long b;
+
+                            switch (dir) {
+                                case DOWN:
+                                    a = BlockPos.asLong(x + r, y, z + q);
+                                    b = BlockPos.asLong(x + r, y - 1, z + q);
+                                    break;
+                                case UP:
+                                    a = BlockPos.asLong(x + r, y + 16 - 1, z + q);
+                                    b = BlockPos.asLong(x + r, y + 16, z + q);
+                                    break;
+                                case NORTH:
+                                    a = BlockPos.asLong(x + q, y + r, z);
+                                    b = BlockPos.asLong(x + q, y + r, z - 1);
+                                    break;
+                                case SOUTH:
+                                    a = BlockPos.asLong(x + q, y + r, z + 16 - 1);
+                                    b = BlockPos.asLong(x + q, y + r, z + 16);
+                                    break;
+                                case WEST:
+                                    a = BlockPos.asLong(x, y + q, z + r);
+                                    b = BlockPos.asLong(x - 1, y + q, z + r);
+                                    break;
+                                case EAST:
+                                    a = BlockPos.asLong(x + 16 - 1, y + q, z + r);
+                                    b = BlockPos.asLong(x + 16, y + q, z + r);
+                                    break;
+                                default:
+                                    continue;
+                            }
+
+                            ((ChunkLightProviderExtended) lightProvider).spreadLightInto(a, b);
+                        }
+                    }
+                }
+            }
+        }
+
+        addQueue = getFastIterator(this.lightArraysToAdd);
+
+        while (addQueue.hasNext()) {
+            Long2ObjectMap.Entry<ChunkNibbleArray> entry2 = addQueue.next();
+            long pos = entry2.getLongKey();
+
+            if (this.hasLight(pos)) {
+                addQueue.remove();
+            }
+        }
+    }
+
+    /**
+     * Returns a fast iterator over the entries in {@param map}. If the collection type is not a fast type, then the
+     * fallback iterator is used. The fast iterator does not allocate a new object for each entry returned by the
+     * iterator, meaning that the result of {@link Iterator#next()} will always be the same object.
+     */
+    private static <T> ObjectIterator<Long2ObjectMap.Entry<T>> getFastIterator(Long2ObjectMap<T> map) {
+        if (map instanceof Long2ObjectOpenHashMap) {
+            return ((Long2ObjectOpenHashMap<T>) map).long2ObjectEntrySet().fastIterator();
+        } else if (map instanceof Long2ObjectLinkedOpenHashMap) {
+            return ((Long2ObjectLinkedOpenHashMap<T>) map).long2ObjectEntrySet().fastIterator();
+        } else {
+            return map.long2ObjectEntrySet().iterator();
         }
     }
 
