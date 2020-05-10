@@ -214,8 +214,10 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
         }
     }
 
+    private final LongSet propagating = new LongOpenHashSet();
+
     /**
-     * @reason Avoid integer boxing
+     * @reason Avoid integer boxing, reduce map lookups and iteration as much as possible
      * @author JellySquid
      */
     @Overwrite
@@ -223,6 +225,9 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
         if (!this.hasLightUpdates() && this.lightArraysToAdd.isEmpty()) {
             return;
         }
+
+        LongSet propagating = this.propagating;
+        propagating.clear();
 
         LongIterator it = this.lightArraysToRemove.iterator();
 
@@ -260,28 +265,33 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
             long pos = entry.getLongKey();
 
             if (this.hasLight(pos)) {
-                ChunkNibbleArray chunkNibbleArray3 = entry.getValue();
+                ChunkNibbleArray array = entry.getValue();
 
-                if (this.lightArrays.get(pos) != chunkNibbleArray3) {
+                if (this.lightArrays.get(pos) != array) {
                     this.removeChunkData(lightProvider, pos);
 
-                    this.lightArrays.put(pos, chunkNibbleArray3);
+                    this.lightArrays.put(pos, array);
                     this.field_15802.add(pos);
                 }
+
+                // If edge light propagation will occur, we need to add the set of removed items to an intermediary set
+                // so the propagation code will not update touching faces of these sections
+                if (!skipEdgeLightPropagation) {
+                    propagating.add(pos);
+                }
+
+                // Early remove the entries from the queue so we don't have to later iterate and check hasLight again
+                addQueue.remove();
             }
         }
 
         this.lightArrays.clearCache();
 
         if (!skipEdgeLightPropagation) {
-            it = this.lightArraysToAdd.keySet().iterator();
+            it = propagating.iterator();
 
             while (it.hasNext()) {
                 long pos = it.nextLong();
-
-                if (!this.hasLight(pos)) {
-                    continue;
-                }
 
                 int x = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getX(pos));
                 int y = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getY(pos));
@@ -290,39 +300,45 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
                 for (Direction dir : DIRECTIONS) {
                     long adjPos = ChunkSectionPos.offset(pos, dir);
 
-                    if (this.lightArraysToAdd.containsKey(adjPos) || !this.hasLight(adjPos)) {
+                    // Avoid updating initializing chunks unnecessarily
+                    if (propagating.contains(adjPos)) {
                         continue;
                     }
 
-                    for (int q = 0; q < 16; ++q) {
-                        for (int r = 0; r < 16; ++r) {
+                    // If there is no light data for this section yet, skip it
+                    if (!this.hasLight(adjPos)) {
+                        continue;
+                    }
+
+                    for (int u1 = 0; u1 < 16; ++u1) {
+                        for (int u2 = 0; u2 < 16; ++u2) {
                             long a;
                             long b;
 
                             switch (dir) {
                                 case DOWN:
-                                    a = BlockPos.asLong(x + r, y, z + q);
-                                    b = BlockPos.asLong(x + r, y - 1, z + q);
+                                    a = BlockPos.asLong(x + u2, y, z + u1);
+                                    b = BlockPos.asLong(x + u2, y - 1, z + u1);
                                     break;
                                 case UP:
-                                    a = BlockPos.asLong(x + r, y + 16 - 1, z + q);
-                                    b = BlockPos.asLong(x + r, y + 16, z + q);
+                                    a = BlockPos.asLong(x + u2, y + 15, z + u1);
+                                    b = BlockPos.asLong(x + u2, y + 16, z + u1);
                                     break;
                                 case NORTH:
-                                    a = BlockPos.asLong(x + q, y + r, z);
-                                    b = BlockPos.asLong(x + q, y + r, z - 1);
+                                    a = BlockPos.asLong(x + u1, y + u2, z);
+                                    b = BlockPos.asLong(x + u1, y + u2, z - 1);
                                     break;
                                 case SOUTH:
-                                    a = BlockPos.asLong(x + q, y + r, z + 16 - 1);
-                                    b = BlockPos.asLong(x + q, y + r, z + 16);
+                                    a = BlockPos.asLong(x + u1, y + u2, z + 15);
+                                    b = BlockPos.asLong(x + u1, y + u2, z + 16);
                                     break;
                                 case WEST:
-                                    a = BlockPos.asLong(x, y + q, z + r);
-                                    b = BlockPos.asLong(x - 1, y + q, z + r);
+                                    a = BlockPos.asLong(x, y + u1, z + u2);
+                                    b = BlockPos.asLong(x - 1, y + u1, z + u2);
                                     break;
                                 case EAST:
-                                    a = BlockPos.asLong(x + 16 - 1, y + q, z + r);
-                                    b = BlockPos.asLong(x + 16, y + q, z + r);
+                                    a = BlockPos.asLong(x + 15, y + u1, z + u2);
+                                    b = BlockPos.asLong(x + 16, y + u1, z + u2);
                                     break;
                                 default:
                                     continue;
@@ -335,16 +351,8 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
             }
         }
 
-        addQueue = getFastIterator(this.lightArraysToAdd);
-
-        while (addQueue.hasNext()) {
-            Long2ObjectMap.Entry<ChunkNibbleArray> entry2 = addQueue.next();
-            long pos = entry2.getLongKey();
-
-            if (this.hasLight(pos)) {
-                addQueue.remove();
-            }
-        }
+        // Vanilla would normally iterate back over the map of light arrays to remove those we worked on, but
+        // that is unneeded now because we removed them earlier.
     }
 
     /**
