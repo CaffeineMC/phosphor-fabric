@@ -27,4 +27,6 @@ public interface ChunkLightProviderExtended {
      * Discards all pending updates for the specified chunk section.
      */
     void cancelUpdatesForChunk(long sectionPos);
+
+    void spreadLightInto(long a, long b);
 }
