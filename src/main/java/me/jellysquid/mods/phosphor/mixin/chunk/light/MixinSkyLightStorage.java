@@ -10,6 +10,8 @@ import net.minecraft.world.chunk.light.SkyLightStorage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
+import java.util.concurrent.locks.StampedLock;
+
 @Mixin(SkyLightStorage.class)
 public abstract class MixinSkyLightStorage {
     /**
@@ -31,28 +33,38 @@ public abstract class MixinSkyLightStorage {
 
         long chunk = ChunkSectionPos.asLong(chunkX, chunkY, chunkZ);
 
-        SkyLightStorage.Data data = ((LightStorageAccess<SkyLightStorage.Data>) this).getStorageUncached();
-        SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
+        // This lock is really horrible. Maybe there is some way to work around it?
+        StampedLock lock = ((LightStorageAccess<SkyLightStorage.Data>) this).getUncachedStorageLock();
+        long stamp = lock.readLock();
 
-        int height = sdata.getHeightMap().get(ChunkSectionPos.withZeroZ(chunk));
+        ChunkNibbleArray array;
 
-        if (height == sdata.getDefaultHeight() || chunkY >= height) {
-            return 15;
-        }
+        try {
+            SkyLightStorage.Data data = ((LightStorageAccess<SkyLightStorage.Data>) this).getUncachedStorage();
+            SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
 
-        ChunkNibbleArray array = data.get(chunk);
+            int height = sdata.getHeightMap().getAsync(ChunkSectionPos.withZeroZ(chunk));
 
-        while (array == null) {
-            ++chunkY;
-
-            if (chunkY >= height) {
+            if (height == sdata.getDefaultHeight() || chunkY >= height) {
                 return 15;
             }
 
-            chunk = ChunkSectionPosHelper.updateYLong(chunk, chunkY);
             array = data.get(chunk);
 
-            posY = chunkY << 4;
+            while (array == null) {
+                ++chunkY;
+
+                if (chunkY >= height) {
+                    return 15;
+                }
+
+                chunk = ChunkSectionPosHelper.updateYLong(chunk, chunkY);
+                array = data.get(chunk);
+
+                posY = chunkY << 4;
+            }
+        } finally {
+            lock.unlockRead(stamp);
         }
 
         return array.get(

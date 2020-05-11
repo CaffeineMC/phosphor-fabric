@@ -7,7 +7,9 @@ import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.ChunkNibbleArray;
+import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightStorage;
@@ -16,8 +18,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Iterator;
+import java.util.concurrent.locks.StampedLock;
 
+@SuppressWarnings("OverwriteModifiers")
 @Mixin(LightStorage.class)
 public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements LightStorageAccess<M> {
     @Shadow
@@ -28,9 +31,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     @Shadow
     @Final
     protected LongSet field_15802;
-
-    @Shadow
-    protected abstract ChunkNibbleArray getLightArray(long chunkPos, boolean cached);
 
     @Mutable
     @Shadow
@@ -96,6 +96,39 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
 
     @Shadow
     protected abstract void removeChunkData(ChunkLightProvider<?, ?> storage, long blockChunkPos);
+
+    @Shadow
+    protected abstract ChunkNibbleArray getLightArray(M storage, long sectionPos);
+
+    @Shadow
+    @Final
+    private ChunkProvider chunkProvider;
+    @Shadow
+    @Final
+    private LightType lightType;
+
+    private final StampedLock uncachedLightArraysLock = new StampedLock();
+
+    /**
+     * @reason Avoid copying large data structures, add locks
+     * @author JellySquid
+     */
+    @Overwrite
+    public ChunkNibbleArray getLightArray(long sectionPos, boolean cached) {
+        if (cached) {
+            return this.getLightArray(this.lightArrays, sectionPos);
+        } else {
+            // We can't be sure that callees won't mutate the underlying data, so this needs to be a
+            // write lock.
+            long stamp = this.uncachedLightArraysLock.writeLock();
+
+            try {
+                return this.getLightArray(this.uncachedLightArrays, sectionPos);
+            } finally {
+                this.uncachedLightArraysLock.unlockWrite(stamp);
+            }
+        }
+    }
 
     /**
      * Replaces the two set of calls to unpack the XYZ coordinates from the input to just one, storing the result as local
@@ -355,8 +388,49 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
         // that is unneeded now because we removed them earlier.
     }
 
+    /**
+     * @reason
+     * @author JellySquid
+     */
+    @Overwrite
+    public void notifyChunkProvider() {
+        if (!this.field_15802.isEmpty()) {
+            // This could result in changes being flushed to various arrays, so write lock.
+            long stamp = this.uncachedLightArraysLock.writeLock();
+
+            try {
+                // This only performs a shallow copy compared to before
+                M map = this.lightArrays.copy();
+                map.disableCache();
+
+                this.uncachedLightArrays = map;
+            } finally {
+                this.uncachedLightArraysLock.unlockWrite(stamp);
+            }
+
+            this.field_15802.clear();
+        }
+
+        if (!this.dirtySections.isEmpty()) {
+            LongIterator it = this.dirtySections.iterator();
+
+            while(it.hasNext()) {
+                long pos = it.nextLong();
+
+                this.chunkProvider.onLightUpdate(this.lightType, ChunkSectionPos.from(pos));
+            }
+
+            this.dirtySections.clear();
+        }
+    }
+
     @Override
-    public M getStorageUncached() {
+    public M getUncachedStorage() {
         return this.uncachedLightArrays;
+    }
+
+    @Override
+    public StampedLock getUncachedStorageLock() {
+        return this.uncachedLightArraysLock;
     }
 }
