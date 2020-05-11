@@ -1,6 +1,6 @@
 package me.jellysquid.mods.phosphor.common.chunk.light;
 
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2IntHashMap;
 
 public interface SkyLightStorageDataAccess {
     /**
@@ -10,6 +10,7 @@ public interface SkyLightStorageDataAccess {
 
     /**
      * Bridge method to SkyLightStorageData#heightMap().
+     * @return
      */
-    Long2IntOpenHashMap getHeightMap();
+    DoubleBufferedLong2IntHashMap getHeightMap();
 }
