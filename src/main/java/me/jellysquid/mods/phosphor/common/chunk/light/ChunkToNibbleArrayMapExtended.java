@@ -9,7 +9,7 @@ public interface ChunkToNibbleArrayMapExtended {
      * of a subtype.
      * @throws IllegalStateException If the map has already been initialized
      */
-    void init();
+    void initMap();
 
     /**
      * Makes this map a shared copy of another. The shared copy cannot be directly written into.

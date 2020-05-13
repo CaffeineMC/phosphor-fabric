@@ -56,7 +56,7 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
         // This will be called immediately by LightStorage in the constructor
         // We can take advantage of this fact to initialize our extra properties here without additional hacks
         if (!this.init) {
-            this.init();
+            this.initData();
         }
 
         SkyLightStorage.Data data = new SkyLightStorage.Data(this.arrays, this.topArraySectionY, this.defaultTopArraySectionY);
@@ -66,8 +66,8 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
         return data;
     }
 
-    private void init() {
-        ((ChunkToNibbleArrayMapExtended) this).init();
+    private void initData() {
+        ((ChunkToNibbleArrayMapExtended) this).initMap();
 
         this.topArraySectionYQueue = new DoubleBufferedLong2IntHashMap();
         this.topArraySectionY = this.topArraySectionYQueue.createSyncView();

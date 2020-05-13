@@ -150,7 +150,7 @@ public abstract class MixinChunkToNibbleArrayMap implements ChunkToNibbleArrayMa
     }
 
     @Override
-    public void init() {
+    public void initMap() {
         if (this.queue != null) {
             throw new IllegalStateException("Map already initialized");
         }
