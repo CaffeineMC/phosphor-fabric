@@ -103,9 +103,14 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     @Shadow
     @Final
     private ChunkProvider chunkProvider;
+
     @Shadow
     @Final
     private LightType lightType;
+
+    @Shadow
+    @Final
+    private LongSet field_25621;
 
     private final StampedLock uncachedLightArraysLock = new StampedLock();
 
@@ -254,7 +259,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
      * @author JellySquid
      */
     @Overwrite
-    public void updateLightArrays(ChunkLightProvider<M, ?> lightProvider, boolean doSkylight, boolean skipEdgeLightPropagation) {
+    public void updateLightArrays(ChunkLightProvider<M, ?> chunkLightProvider, boolean doSkylight, boolean skipEdgeLightPropagation) {
         if (!this.hasLightUpdates() && this.lightArraysToAdd.isEmpty()) {
             return;
         }
@@ -267,7 +272,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
         while (it.hasNext()) {
             long pos = it.nextLong();
 
-            this.removeChunkData(lightProvider, pos);
+            this.removeChunkData(chunkLightProvider, pos);
 
             ChunkNibbleArray pending = this.lightArraysToAdd.remove(pos);
             ChunkNibbleArray existing = this.lightArrays.removeChunk(pos);
@@ -301,7 +306,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
                 ChunkNibbleArray array = entry.getValue();
 
                 if (this.lightArrays.get(pos) != array) {
-                    this.removeChunkData(lightProvider, pos);
+                    this.removeChunkData(chunkLightProvider, pos);
 
                     this.lightArrays.put(pos, array);
                     this.field_15802.add(pos);
@@ -324,68 +329,85 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
             it = propagating.iterator();
 
             while (it.hasNext()) {
-                long pos = it.nextLong();
+                method_29967(chunkLightProvider, it.nextLong());
+            }
+        } else {
+            it = this.field_25621.iterator();
 
-                int x = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getX(pos));
-                int y = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getY(pos));
-                int z = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getZ(pos));
+            while (it.hasNext()) {
+                method_29967(chunkLightProvider, it.nextLong());
+            }
+        }
 
-                for (Direction dir : DIRECTIONS) {
-                    long adjPos = ChunkSectionPos.offset(pos, dir);
+        this.field_25621.clear();
 
-                    // Avoid updating initializing chunks unnecessarily
-                    if (propagating.contains(adjPos)) {
-                        continue;
-                    }
+        // Vanilla would normally iterate back over the map of light arrays to remove those we worked on, but
+        // that is unneeded now because we removed them earlier.
+    }
 
-                    // If there is no light data for this section yet, skip it
-                    if (!this.hasLight(adjPos)) {
-                        continue;
-                    }
+    /**
+     * @reason Avoid integer boxing, reduce map lookups and iteration as much as possible
+     * @author JellySquid
+     */
+    @Overwrite
+    public void method_29967(ChunkLightProvider<M, ?> chunkLightProvider, long pos) {
+        if (this.hasLight(pos)) {
+            int x = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getX(pos));
+            int y = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getY(pos));
+            int z = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getZ(pos));
 
-                    for (int u1 = 0; u1 < 16; ++u1) {
-                        for (int u2 = 0; u2 < 16; ++u2) {
-                            long a;
-                            long b;
+            for (Direction dir : DIRECTIONS) {
+                long adjPos = ChunkSectionPos.offset(pos, dir);
 
-                            switch (dir) {
-                                case DOWN:
-                                    a = BlockPos.asLong(x + u2, y, z + u1);
-                                    b = BlockPos.asLong(x + u2, y - 1, z + u1);
-                                    break;
-                                case UP:
-                                    a = BlockPos.asLong(x + u2, y + 15, z + u1);
-                                    b = BlockPos.asLong(x + u2, y + 16, z + u1);
-                                    break;
-                                case NORTH:
-                                    a = BlockPos.asLong(x + u1, y + u2, z);
-                                    b = BlockPos.asLong(x + u1, y + u2, z - 1);
-                                    break;
-                                case SOUTH:
-                                    a = BlockPos.asLong(x + u1, y + u2, z + 15);
-                                    b = BlockPos.asLong(x + u1, y + u2, z + 16);
-                                    break;
-                                case WEST:
-                                    a = BlockPos.asLong(x, y + u1, z + u2);
-                                    b = BlockPos.asLong(x - 1, y + u1, z + u2);
-                                    break;
-                                case EAST:
-                                    a = BlockPos.asLong(x + 15, y + u1, z + u2);
-                                    b = BlockPos.asLong(x + 16, y + u1, z + u2);
-                                    break;
-                                default:
-                                    continue;
-                            }
+                // Avoid updating initializing chunks unnecessarily
+                if (propagating.contains(adjPos)) {
+                    continue;
+                }
 
-                            ((ChunkLightProviderExtended) lightProvider).spreadLightInto(a, b);
+                // If there is no light data for this section yet, skip it
+                if (!this.hasLight(adjPos)) {
+                    continue;
+                }
+
+                for (int u1 = 0; u1 < 16; ++u1) {
+                    for (int u2 = 0; u2 < 16; ++u2) {
+                        long a;
+                        long b;
+
+                        switch (dir) {
+                            case DOWN:
+                                a = BlockPos.asLong(x + u2, y, z + u1);
+                                b = BlockPos.asLong(x + u2, y - 1, z + u1);
+                                break;
+                            case UP:
+                                a = BlockPos.asLong(x + u2, y + 15, z + u1);
+                                b = BlockPos.asLong(x + u2, y + 16, z + u1);
+                                break;
+                            case NORTH:
+                                a = BlockPos.asLong(x + u1, y + u2, z);
+                                b = BlockPos.asLong(x + u1, y + u2, z - 1);
+                                break;
+                            case SOUTH:
+                                a = BlockPos.asLong(x + u1, y + u2, z + 15);
+                                b = BlockPos.asLong(x + u1, y + u2, z + 16);
+                                break;
+                            case WEST:
+                                a = BlockPos.asLong(x, y + u1, z + u2);
+                                b = BlockPos.asLong(x - 1, y + u1, z + u2);
+                                break;
+                            case EAST:
+                                a = BlockPos.asLong(x + 15, y + u1, z + u2);
+                                b = BlockPos.asLong(x + 16, y + u1, z + u2);
+                                break;
+                            default:
+                                continue;
                         }
+
+                        ((ChunkLightProviderExtended) chunkLightProvider).spreadLightInto(a, b);
                     }
                 }
             }
         }
-
-        // Vanilla would normally iterate back over the map of light arrays to remove those we worked on, but
-        // that is unneeded now because we removed them earlier.
     }
 
     /**

@@ -34,7 +34,7 @@ public abstract class MixinBlockLightStorageData extends ChunkToNibbleArrayMap<B
         // This will be called immediately by LightStorage in the constructor
         // We can take advantage of this fact to initialize our extra properties here without additional hacks
         if (!this.init) {
-            this.init();
+            this.initialize();
         }
 
         BlockLightStorage.Data data = new BlockLightStorage.Data(this.arrays);
@@ -44,7 +44,7 @@ public abstract class MixinBlockLightStorageData extends ChunkToNibbleArrayMap<B
         return data;
     }
 
-    private void init() {
+    private void initialize() {
         ((ChunkToNibbleArrayMapExtended) this).init();
 
         this.init = true;

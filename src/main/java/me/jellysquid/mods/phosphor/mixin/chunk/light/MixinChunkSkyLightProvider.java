@@ -192,7 +192,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         // Skylight optimization: Try to find bottom-most non-empty chunk
         if (localY == 0) {
             while (!this.lightStorage.hasLight(ChunkSectionPos.offset(chunkId, 0, -chunkOffsetY - 1, 0))
-                    && this.lightStorage.isAboveMinimumHeight(chunkY - chunkOffsetY - 1)) {
+                    && this.lightStorage.isAboveMinHeight(chunkY - chunkOffsetY - 1)) {
                 ++chunkOffsetY;
             }
         }
