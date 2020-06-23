@@ -350,7 +350,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
      * @author JellySquid
      */
     @Overwrite
-    public void method_29967(ChunkLightProvider<M, ?> chunkLightProvider, long pos) {
+    private void method_29967(ChunkLightProvider<M, ?> chunkLightProvider, long pos) {
         if (this.hasLight(pos)) {
             int x = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getX(pos));
             int y = ChunkSectionPos.getWorldCoord(ChunkSectionPos.getY(pos));
