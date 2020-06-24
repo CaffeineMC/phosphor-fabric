@@ -4,4 +4,4 @@ accessible class net/minecraft/block/AbstractBlock$AbstractBlockState$ShapeCache
 
 accessible method net/minecraft/world/chunk/light/LightStorage hasLight (J)Z
 accessible method net/minecraft/world/chunk/light/SkyLightStorage method_15565 (J)Z
-accessible method net/minecraft/world/chunk/light/SkyLightStorage isAboveMinimumHeight (I)Z
+accessible method net/minecraft/world/chunk/light/SkyLightStorage isAboveMinHeight (I)Z
