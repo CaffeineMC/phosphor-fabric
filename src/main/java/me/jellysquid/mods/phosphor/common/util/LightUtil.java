@@ -17,17 +17,17 @@ public class LightUtil {
             return true;
         }
 
-        // If both shapes are the same, it is pointless to merge them
-        if (a == b) {
-            return coversFullCube(a);
-        }
-
-        boolean ae = a == VoxelShapes.empty() || a.isEmpty();
-        boolean be = b == VoxelShapes.empty() || b.isEmpty();
+        boolean ae = a.isEmpty();
+        boolean be = b.isEmpty();
 
         // If both shapes are empty, they can never overlap a full cube
         if (ae && be) {
             return false;
+        }
+
+        // If both shapes are the same, it is pointless to merge them
+        if (a == b) {
+            return coversFullCube(a);
         }
 
         // If one of the shapes is empty, we can skip merging as any shape merged with an empty shape is the same shape
