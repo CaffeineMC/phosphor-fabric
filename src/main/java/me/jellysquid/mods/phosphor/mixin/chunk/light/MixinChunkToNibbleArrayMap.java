@@ -1,6 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.light.ChunkToNibbleArrayMapExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.SharedNibbleArrayMap;
 import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2ObjectHashMap;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.*;
 
 @SuppressWarnings("OverwriteModifiers")
 @Mixin(ChunkToNibbleArrayMap.class)
-public abstract class MixinChunkToNibbleArrayMap implements ChunkToNibbleArrayMapExtended {
+public abstract class MixinChunkToNibbleArrayMap implements SharedNibbleArrayMap {
     @Shadow
     private boolean cacheEnabled;
 
@@ -140,7 +140,7 @@ public abstract class MixinChunkToNibbleArrayMap implements ChunkToNibbleArrayMa
     }
 
     @Override
-    public void makeSharedCopy(ChunkToNibbleArrayMapExtended map) {
+    public void makeSharedCopy(SharedNibbleArrayMap map) {
         this.queue = map.getUpdateQueue();
         this.isShared = this.queue != null;
 

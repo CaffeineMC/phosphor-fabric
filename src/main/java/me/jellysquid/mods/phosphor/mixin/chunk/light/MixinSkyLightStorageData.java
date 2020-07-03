@@ -2,9 +2,9 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import me.jellysquid.mods.phosphor.common.chunk.light.ChunkToNibbleArrayMapExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.SharedNibbleArrayMap;
 import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
-import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.SharedSkyLightData;
 import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2IntHashMap;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.*;
 
 @Mixin(SkyLightStorage.Data.class)
 public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStorage.Data>
-        implements SkyLightStorageDataAccess, SkyLightStorageDataExtended {
+        implements SkyLightStorageDataAccess, SharedSkyLightData {
     @Shadow
     private int defaultTopArraySectionY;
 
@@ -60,14 +60,14 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
         }
 
         SkyLightStorage.Data data = new SkyLightStorage.Data(this.arrays, this.topArraySectionY, this.defaultTopArraySectionY);
-        ((SkyLightStorageDataExtended) (Object) data).makeSharedCopy(this.topArraySectionY, this.topArraySectionYQueue);
-        ((ChunkToNibbleArrayMapExtended) (Object) data).makeSharedCopy((ChunkToNibbleArrayMapExtended) this);
+        ((SharedSkyLightData) (Object) data).makeSharedCopy(this.topArraySectionY, this.topArraySectionYQueue);
+        ((SharedNibbleArrayMap) (Object) data).makeSharedCopy((SharedNibbleArrayMap) this);
 
         return data;
     }
 
     private void initialize() {
-        ((ChunkToNibbleArrayMapExtended) this).init();
+        ((SharedNibbleArrayMap) this).init();
 
         this.topArraySectionYQueue = new DoubleBufferedLong2IntHashMap();
         this.topArraySectionY = this.topArraySectionYQueue.createSyncView();
@@ -81,7 +81,7 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
     }
 
     @Override
-    public DoubleBufferedLong2IntHashMap getHeightMap() {
-        return this.topArraySectionYQueue;
+    public int getHeight(long pos) {
+        return this.topArraySectionYQueue.getAsync(pos);
     }
 }

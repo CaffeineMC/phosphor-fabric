@@ -1,12 +1,9 @@
 package me.jellysquid.mods.phosphor.common.block;
 
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 
-public interface ShapeCacheAccess {
+public interface BlockStateLightInfo {
     VoxelShape[] getExtrudedFaces();
 
     int getLightSubtracted();
-
-    boolean isOpaque();
 }

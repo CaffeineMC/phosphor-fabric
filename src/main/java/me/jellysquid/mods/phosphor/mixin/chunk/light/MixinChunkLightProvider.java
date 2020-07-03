@@ -1,10 +1,12 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import it.unimi.dsi.fastutil.longs.*;
-import me.jellysquid.mods.phosphor.common.block.AbstractBlockStateAccess;
-import me.jellysquid.mods.phosphor.common.block.ShapeCacheAccess;
-import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
-import me.jellysquid.mods.phosphor.common.chunk.level.PendingUpdateListener;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfoAccess;
+import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfo;
+import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import me.jellysquid.mods.phosphor.common.util.cache.LightEngineBlockAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -29,7 +31,7 @@ import java.util.BitSet;
 
 @Mixin(ChunkLightProvider.class)
 public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S extends LightStorage<M>>
-        extends LevelPropagator implements ChunkLightProviderExtended, PendingUpdateListener {
+        extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener {
     @Shadow
     @Final
     protected BlockPos.Mutable reusableBlockPos;
@@ -71,10 +73,10 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     // [VanillaCopy] method_20479
     @Override
     public int getSubtractedLight(BlockState state, int x, int y, int z) {
-        ShapeCacheAccess shapeCache = ((AbstractBlockStateAccess) state).getShapeCache();
+        BlockStateLightInfo info = ((BlockStateLightInfoAccess) state).getLightInfo();
 
-        if (shapeCache != null) {
-            return shapeCache.getLightSubtracted();
+        if (info != null) {
+            return info.getLightSubtracted();
         } else {
             return state.getBlock().getOpacity(state, this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
         }
@@ -87,10 +89,10 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
             return VoxelShapes.empty();
         }
 
-        ShapeCacheAccess shapeCache = ((AbstractBlockStateAccess) state).getShapeCache();
+        BlockStateLightInfo info = ((BlockStateLightInfoAccess) state).getLightInfo();
 
-        if (shapeCache != null) {
-            VoxelShape[] extrudedFaces = shapeCache.getExtrudedFaces();
+        if (info != null) {
+            VoxelShape[] extrudedFaces = info.getExtrudedFaces();
 
             if (extrudedFaces != null) {
                 return extrudedFaces[dir.ordinal()];

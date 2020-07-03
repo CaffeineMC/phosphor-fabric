@@ -2,7 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
-import me.jellysquid.mods.phosphor.common.chunk.level.PendingUpdateListener;
+import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.chunk.light.LevelPropagator;
@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(LevelPropagator.class)
-public abstract class MixinLevelPropagator implements LevelPropagatorExtended, PendingUpdateListener {
+public abstract class MixinLevelPropagator implements LevelPropagatorExtended, LevelUpdateListener {
     @Shadow
     @Final
     private Long2ByteMap pendingUpdates;

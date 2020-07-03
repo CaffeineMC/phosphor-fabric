@@ -8,7 +8,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import me.jellysquid.mods.phosphor.common.util.sync.SeqLock;
 
 /**
- * A double buffered Long->Object hash table which allows for multiple readers to see a consistent view without\
+ * A double buffered Long->Object hash table which allows for multiple readers to see a consistent view without
  * contention over shared resources. The synchronous (owned) view must be synced using
  * {@link DoubleBufferedLong2IntHashMap#flushChangesSync()} after all desired changes have been made.
  *

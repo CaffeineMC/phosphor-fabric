@@ -1,6 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
+import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import net.minecraft.util.math.BlockPos;
@@ -34,16 +34,16 @@ public abstract class MixinSkyLightStorage {
         long chunk = ChunkSectionPos.asLong(chunkX, chunkY, chunkZ);
 
         // This lock is really horrible. Maybe there is some way to work around it?
-        StampedLock lock = ((LightStorageAccess<SkyLightStorage.Data>) this).getUncachedStorageLock();
+        StampedLock lock = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorageLock();
         long stamp = lock.readLock();
 
         ChunkNibbleArray array;
 
         try {
-            SkyLightStorage.Data data = ((LightStorageAccess<SkyLightStorage.Data>) this).getUncachedStorage();
+            SkyLightStorage.Data data = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorage();
             SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
 
-            int height = sdata.getHeightMap().getAsync(ChunkSectionPos.withZeroZ(chunk));
+            int height = sdata.getHeight(ChunkSectionPos.withZeroZ(chunk));
 
             if (height == sdata.getDefaultHeight() || chunkY >= height) {
                 return 15;

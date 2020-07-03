@@ -1,7 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
@@ -26,7 +26,7 @@ import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @Mixin(ChunkSkyLightProvider.class)
 public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage>
-        implements LevelPropagatorExtended, ChunkLightProviderExtended {
+        implements LevelPropagatorExtended, LightProviderBlockAccess {
     @Shadow
     @Final
     private static Direction[] HORIZONTAL_DIRECTIONS;

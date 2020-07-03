@@ -4,7 +4,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 
-public interface ChunkLightProviderExtended {
+public interface LightProviderBlockAccess {
     /**
      * Returns the BlockState which represents the block at the specified coordinates in the world. This may return
      * a different BlockState than what actually exists at the coordinates (such as if it is out of bounds), but will
@@ -19,14 +19,8 @@ public interface ChunkLightProviderExtended {
 
     /**
      * Returns the VoxelShape of a block for lighting without making a second call to
-     * {@link ChunkLightProviderExtended#getBlockStateForLighting(int, int, int)}.
+     * {@link LightProviderBlockAccess#getBlockStateForLighting(int, int, int)}.
      */
     VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir);
 
-    /**
-     * Discards all pending updates for the specified chunk section.
-     */
-    void cancelUpdatesForChunk(long sectionPos);
-
-    void spreadLightInto(long a, long b);
 }

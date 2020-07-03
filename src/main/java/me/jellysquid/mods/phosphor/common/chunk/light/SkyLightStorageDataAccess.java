@@ -9,8 +9,7 @@ public interface SkyLightStorageDataAccess {
     int getDefaultHeight();
 
     /**
-     * Bridge method to SkyLightStorageData#heightMap().
-     * @return
+     * Returns the height map value for the given block column in the world.
      */
-    DoubleBufferedLong2IntHashMap getHeightMap();
+    int getHeight(long pos);
 }

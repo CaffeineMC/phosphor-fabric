@@ -1,7 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
@@ -9,7 +9,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.light.BlockLightStorage;
@@ -24,7 +23,7 @@ import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @Mixin(ChunkBlockLightProvider.class)
 public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<BlockLightStorage.Data, BlockLightStorage>
-        implements LevelPropagatorExtended, ChunkLightProviderExtended {
+        implements LevelPropagatorExtended, LightProviderBlockAccess {
     public MixinChunkBlockLightProvider(ChunkProvider chunkProvider, LightType type, BlockLightStorage lightStorage) {
         super(chunkProvider, type, lightStorage);
     }

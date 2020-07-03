@@ -1,8 +1,8 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import me.jellysquid.mods.phosphor.common.chunk.light.BlockLightStorageDataExtended;
-import me.jellysquid.mods.phosphor.common.chunk.light.ChunkToNibbleArrayMapExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.SharedBlockLightData;
+import me.jellysquid.mods.phosphor.common.chunk.light.SharedNibbleArrayMap;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.BlockLightStorage;
@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 
 @Mixin(BlockLightStorage.Data.class)
 public abstract class MixinBlockLightStorageData extends ChunkToNibbleArrayMap<BlockLightStorage.Data>
-        implements BlockLightStorageDataExtended {
+        implements SharedBlockLightData {
     private boolean init;
 
     protected MixinBlockLightStorageData(Long2ObjectOpenHashMap<ChunkNibbleArray> arrays) {
@@ -38,14 +38,14 @@ public abstract class MixinBlockLightStorageData extends ChunkToNibbleArrayMap<B
         }
 
         BlockLightStorage.Data data = new BlockLightStorage.Data(this.arrays);
-        ((ChunkToNibbleArrayMapExtended) (Object) data).makeSharedCopy((ChunkToNibbleArrayMapExtended) this);
-        ((BlockLightStorageDataExtended) (Object) data).makeSharedCopy();
+        ((SharedNibbleArrayMap) (Object) data).makeSharedCopy((SharedNibbleArrayMap) this);
+        ((SharedBlockLightData) (Object) data).makeSharedCopy();
 
         return data;
     }
 
     private void initialize() {
-        ((ChunkToNibbleArrayMapExtended) this).init();
+        ((SharedNibbleArrayMap) this).init();
 
         this.init = true;
     }

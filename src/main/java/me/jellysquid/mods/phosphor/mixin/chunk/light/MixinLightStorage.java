@@ -2,8 +2,9 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
-import me.jellysquid.mods.phosphor.common.chunk.light.ChunkLightProviderExtended;
-import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
+import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
@@ -22,7 +23,7 @@ import java.util.concurrent.locks.StampedLock;
 
 @SuppressWarnings("OverwriteModifiers")
 @Mixin(LightStorage.class)
-public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements LightStorageAccess<M> {
+public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements SharedLightStorageAccess<M> {
     @Shadow
     @Final
     protected M lightArrays;
@@ -245,8 +246,8 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
      */
     @Inject(method = "removeChunkData", at = @At("HEAD"), cancellable = true)
     protected void removeChunkData(ChunkLightProvider<?, ?> provider, long pos, CallbackInfo ci) {
-        if (provider instanceof ChunkLightProviderExtended) {
-            ((ChunkLightProviderExtended) provider).cancelUpdatesForChunk(pos);
+        if (provider instanceof LightProviderUpdateTracker) {
+            ((LightProviderUpdateTracker) provider).cancelUpdatesForChunk(pos);
 
             ci.cancel();
         }
@@ -403,7 +404,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
                                 continue;
                         }
 
-                        ((ChunkLightProviderExtended) chunkLightProvider).spreadLightInto(a, b);
+                        ((LightInitializer) chunkLightProvider).spreadLightInto(a, b);
                     }
                 }
             }
@@ -447,12 +448,12 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     }
 
     @Override
-    public M getUncachedStorage() {
+    public M getStorage() {
         return this.uncachedLightArrays;
     }
 
     @Override
-    public StampedLock getUncachedStorageLock() {
+    public StampedLock getStorageLock() {
         return this.uncachedLightArraysLock;
     }
 }
