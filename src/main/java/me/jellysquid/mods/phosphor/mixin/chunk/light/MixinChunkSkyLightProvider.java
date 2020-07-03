@@ -6,6 +6,7 @@ import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
@@ -27,6 +28,8 @@ import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 @Mixin(ChunkSkyLightProvider.class)
 public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage>
         implements LevelPropagatorExtended, LightProviderBlockAccess {
+    private static final BlockState AIR_BLOCK = Blocks.AIR.getDefaultState();
+
     @Shadow
     @Final
     private static Direction[] HORIZONTAL_DIRECTIONS;
@@ -49,6 +52,8 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         return this.getPropagatedLevel(fromId, null, toId, currentLevel);
     }
 
+    private int counterBranchA, counterBranchB, counterBranchC;
+
     /**
      * This breaks up the call to method_20479 into smaller parts so we do not have to pass a mutable heap object
      * to the method in order to extract the light result. This has a few other advantages, allowing us to:
@@ -67,17 +72,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
     public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel) {
         if (toId == Long.MAX_VALUE) {
             return 15;
-        }
-
-        if (fromId == Long.MAX_VALUE) {
-            if (this.lightStorage.method_15565(toId)) {
-                currentLevel = 0;
-            } else {
+        } else if (fromId == Long.MAX_VALUE) {
+            if (!this.lightStorage.method_15565(toId)) {
                 return 15;
             }
-        }
 
-        if (currentLevel >= 15) {
+            currentLevel = 0;
+        } else if (currentLevel >= 15) {
             return currentLevel;
         }
 
@@ -99,53 +100,64 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             fromState = this.getBlockStateForLighting(fromX, fromY, fromZ);
         }
 
+        // Most light updates will happen between two empty air blocks, so use this to assume some properties
+        boolean airPropagation = toState == AIR_BLOCK && fromState == AIR_BLOCK;
         boolean verticalOnly = fromX == toX && fromZ == toZ;
 
+        // The direction the light update is propagating
         Direction dir;
+        Direction altDir = null;
 
         if (fromId == Long.MAX_VALUE) {
             dir = Direction.DOWN;
         } else {
             dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
-        }
 
-        if (dir != null) {
-            VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
+            if (dir == null) {
+                altDir = DirectionHelper.getVecDirection(toX - fromX, verticalOnly ? -1 : 0, toZ - fromZ);
 
-            if (toShape != VoxelShapes.fullCube()) {
-                VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
-
-                if (LightUtil.unionCoversFullCube(fromShape, toShape)) {
+                if (altDir == null) {
                     return 15;
                 }
             }
-        } else {
-            Direction altDir = Direction.fromVector(toX - fromX, verticalOnly ? -1 : 0, toZ - fromZ);
+        }
 
-            if (altDir == null) {
-                return 15;
-            }
+        // Shape comparison checks are only meaningful if the blocks involved have non-empty shapes
+        // If we're comparing between air blocks, this is meaningless
+        if (!airPropagation) {
+            // If the two blocks are directly adjacent...
+            if (dir != null) {
+                VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
 
-            VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, altDir.getOpposite());
+                if (toShape != VoxelShapes.fullCube()) {
+                    VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
 
-            if (LightUtil.unionCoversFullCube(VoxelShapes.empty(), toShape)) {
-                return 15;
-            }
+                    if (LightUtil.unionCoversFullCube(fromShape, toShape)) {
+                        return 15;
+                    }
+                }
+            } else {
+                VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, altDir.getOpposite());
 
-            VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, Direction.DOWN);
+                if (LightUtil.unionCoversFullCube(VoxelShapes.empty(), toShape)) {
+                    return 15;
+                }
 
-            if (LightUtil.unionCoversFullCube(fromShape, VoxelShapes.empty())) {
-                return 15;
+                VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, Direction.DOWN);
+
+                if (LightUtil.unionCoversFullCube(fromShape, VoxelShapes.empty())) {
+                    return 15;
+                }
             }
         }
 
         int out = this.getSubtractedLight(toState, toX, toY, toZ);
 
-        if ((fromId == Long.MAX_VALUE || verticalOnly && fromY > toY) && currentLevel == 0 && out == 0) {
+        if (out == 0 && currentLevel == 0 && (fromId == Long.MAX_VALUE || verticalOnly && fromY > toY)) {
             return 0;
-        } else {
-            return currentLevel + Math.max(1, out);
         }
+
+        return currentLevel + Math.max(1, out);
     }
 
     /**
