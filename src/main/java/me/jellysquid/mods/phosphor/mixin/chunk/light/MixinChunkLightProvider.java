@@ -1,21 +1,23 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfoAccess;
 import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfo;
+import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfoAccess;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
-import me.jellysquid.mods.phosphor.common.util.cache.LightEngineBlockAccess;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.LightType;
+import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkProvider;
+import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LevelPropagator;
@@ -27,11 +29,14 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.Arrays;
 import java.util.BitSet;
 
 @Mixin(ChunkLightProvider.class)
 public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S extends LightStorage<M>>
         extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener {
+    private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
+
     @Shadow
     @Final
     protected BlockPos.Mutable reusableBlockPos;
@@ -40,7 +45,8 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     @Final
     protected ChunkProvider chunkProvider;
 
-    private LightEngineBlockAccess blockAccess;
+    private final long[] cachedChunkPos = new long[2];
+    private final ChunkSection[][] cachedChunkSections = new ChunkSection[2][];
 
     private final Long2ObjectOpenHashMap<BitSet> buckets = new Long2ObjectOpenHashMap<>();
 
@@ -51,23 +57,74 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         super(levelCount, expectedLevelSize, expectedTotalSize);
     }
 
-    @Inject(method = "<init>", at = @At("RETURN"))
-    private void onConstructed(ChunkProvider provider, LightType lightType, S storage, CallbackInfo ci) {
-        this.blockAccess = new LightEngineBlockAccess(provider);
-    }
-
     @Inject(method = "clearChunkCache", at = @At("RETURN"))
     private void onCleanup(CallbackInfo ci) {
         // This callback may be executed from the constructor above, and the object won't be initialized then
-        if (this.blockAccess != null) {
-            this.blockAccess.reset();
+        if (this.cachedChunkPos != null) {
+            Arrays.fill(this.cachedChunkPos, Long.MIN_VALUE);
+            Arrays.fill(this.cachedChunkSections, null);
         }
     }
 
     // [VanillaCopy] method_20479
     @Override
     public BlockState getBlockStateForLighting(int x, int y, int z) {
-        return this.blockAccess.getBlockState(x, y, z);
+        if (y < 0 || y >= 256) {
+            return DEFAULT_STATE;
+        }
+
+        final long chunkPos = ChunkPos.toLong(x >> 4, z >> 4);
+        final long[] cachedChunkPos = this.cachedChunkPos;
+
+        ChunkSection[] sections = null;
+
+        for (int i = 0; i < 2; i++) {
+            if (cachedChunkPos[i] == chunkPos) {
+                sections = this.cachedChunkSections[i];
+                break;
+            }
+        }
+
+        if (sections != null) {
+            final ChunkSection section = sections[y >> 4];
+
+            if (section == null) {
+                return DEFAULT_STATE;
+            }
+
+            return section.getBlockState(x & 15, y & 15, z & 15);
+        } else {
+            return this.getBlockStateFallback(chunkPos, x, y, z);
+        }
+    }
+
+    private BlockState getBlockStateFallback(long chunkPos, int x, int y, int z) {
+        final Chunk chunk = (Chunk) this.chunkProvider.getChunk(x >> 4, z >> 4);
+        final ChunkSection[] sections;
+
+        BlockState blockState = null;
+
+        if (chunk != null) {
+            sections = chunk.getSectionArray();
+
+            ChunkSection section = sections[y >> 4];
+
+            if (section != null) {
+                blockState = section.getBlockState(x & 15, y & 15, z & 15);
+            }
+        } else {
+            sections = null;
+        }
+
+        final ChunkSection[][] cachedSections = this.cachedChunkSections;
+        cachedSections[1] = cachedSections[0];
+        cachedSections[0] = sections;
+
+        final long[] cachedCoords = this.cachedChunkPos;
+        cachedCoords[1] = cachedCoords[0];
+        cachedCoords[0] = chunkPos;
+
+        return blockState;
     }
 
     // [VanillaCopy] method_20479
@@ -78,30 +135,36 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         if (info != null) {
             return info.getLightSubtracted();
         } else {
-            return state.getBlock().getOpacity(state, this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
+            return this.getSubtractedLightFallback(state, x, y, z);
         }
+    }
+
+    private int getSubtractedLightFallback(BlockState state, int x, int y, int z) {
+        return state.getBlock().getOpacity(state, this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z));
     }
 
     // [VanillaCopy] method_20479
     @Override
     public VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir) {
-        if (state == null || !state.hasSidedTransparency()) {
-            return VoxelShapes.empty();
-        }
+        if (state != null && state.hasSidedTransparency()) {
+            BlockStateLightInfo info = ((BlockStateLightInfoAccess) state).getLightInfo();
 
-        BlockStateLightInfo info = ((BlockStateLightInfoAccess) state).getLightInfo();
+            if (info != null) {
+                VoxelShape[] extrudedFaces = info.getExtrudedFaces();
 
-        if (info != null) {
-            VoxelShape[] extrudedFaces = info.getExtrudedFaces();
-
-            if (extrudedFaces != null) {
-                return extrudedFaces[dir.ordinal()];
+                if (extrudedFaces != null) {
+                    return extrudedFaces[dir.ordinal()];
+                }
+            } else {
+                return this.getOpaqueShapeFallback(state, x, y, z, dir);
             }
-
-            return VoxelShapes.empty();
-        } else {
-            return VoxelShapes.extrudeFace(state.getCullingShape(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z)), dir);
         }
+
+        return VoxelShapes.empty();
+    }
+
+    private VoxelShape getOpaqueShapeFallback(BlockState state, int x, int y, int z, Direction dir) {
+        return VoxelShapes.extrudeFace(state.getCullingShape(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z)), dir);
     }
 
     @Override
