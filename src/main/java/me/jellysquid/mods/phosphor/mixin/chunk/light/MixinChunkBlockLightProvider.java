@@ -131,7 +131,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
             long adjChunk = ChunkSectionPos.asLong(getSectionCoord(adjX), getSectionCoord(adjY), getSectionCoord(adjZ));
 
-            if ((chunk == adjChunk) || this.lightStorage.hasLight(adjChunk)) {
+            if ((chunk == adjChunk) || this.lightStorage.hasSection(adjChunk)) {
                 this.propagateLevel(id, state, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
             }
         }

@@ -15,12 +15,12 @@ import org.spongepowered.asm.mixin.*;
 public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStorage.Data>
         implements SkyLightStorageDataAccess, SharedSkyLightData {
     @Shadow
-    private int defaultTopArraySectionY;
+    private int minSectionY;
 
     @Mutable
     @Shadow
     @Final
-    private Long2IntOpenHashMap topArraySectionY;
+    private Long2IntOpenHashMap columnToTopSection;
 
     // Our new double-buffered collection
     private DoubleBufferedLong2IntHashMap topArraySectionYQueue;
@@ -35,7 +35,7 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
     @Override
     public void makeSharedCopy(Long2IntOpenHashMap map, DoubleBufferedLong2IntHashMap queue) {
         this.topArraySectionYQueue = queue;
-        this.topArraySectionY = map;
+        this.columnToTopSection = map;
 
         // We need to immediately see all updates on the thread this is being copied to
         if (queue != null) {
@@ -59,8 +59,8 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
             this.initialize();
         }
 
-        SkyLightStorage.Data data = new SkyLightStorage.Data(this.arrays, this.topArraySectionY, this.defaultTopArraySectionY);
-        ((SharedSkyLightData) (Object) data).makeSharedCopy(this.topArraySectionY, this.topArraySectionYQueue);
+        SkyLightStorage.Data data = new SkyLightStorage.Data(this.arrays, this.columnToTopSection, this.minSectionY);
+        ((SharedSkyLightData) (Object) data).makeSharedCopy(this.columnToTopSection, this.topArraySectionYQueue);
         ((SharedNibbleArrayMap) (Object) data).makeSharedCopy((SharedNibbleArrayMap) this);
 
         return data;
@@ -70,14 +70,14 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
         ((SharedNibbleArrayMap) this).init();
 
         this.topArraySectionYQueue = new DoubleBufferedLong2IntHashMap();
-        this.topArraySectionY = this.topArraySectionYQueue.createSyncView();
+        this.columnToTopSection = this.topArraySectionYQueue.createSyncView();
 
         this.init = true;
     }
 
     @Override
     public int getDefaultHeight() {
-        return this.defaultTopArraySectionY;
+        return this.minSectionY;
     }
 
     @Override

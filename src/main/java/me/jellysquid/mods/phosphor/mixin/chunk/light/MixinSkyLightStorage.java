@@ -43,7 +43,7 @@ public abstract class MixinSkyLightStorage {
             SkyLightStorage.Data data = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorage();
             SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
 
-            int height = sdata.getHeight(ChunkSectionPos.withZeroZ(chunk));
+            int height = sdata.getHeight(ChunkSectionPos.withZeroY(chunk));
 
             if (height == sdata.getDefaultHeight() || chunkY >= height) {
                 return 15;
