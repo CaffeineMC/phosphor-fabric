@@ -326,18 +326,9 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
 
         this.lightArrays.clearCache();
 
-        if (!skipEdgeLightPropagation) {
-            it = propagating.iterator();
-
-            while (it.hasNext()) {
-                method_29967(chunkLightProvider, it.nextLong());
-            }
-        } else {
-            it = this.field_25621.iterator();
-
-            while (it.hasNext()) {
-                method_29967(chunkLightProvider, it.nextLong());
-            }
+        it = skipEdgeLightPropagation ? this.field_25621.iterator() : propagating.iterator();
+        while (it.hasNext()) {
+            method_29967(chunkLightProvider, it.nextLong());
         }
 
         this.field_25621.clear();
