@@ -34,25 +34,26 @@ public abstract class MixinWorldChunk {
      */
     @Overwrite
     public Stream<BlockPos> getLightSourcesStream() {
-        List<BlockPos> list = new ArrayList<>();
-
-        int startX = this.pos.getStartX();
-        int startZ = this.pos.getStartZ();
+        final int startX = this.pos.getStartX();
+        final int startZ = this.pos.getStartZ();
 
         ChunkSection[] chunkSections = this.sections;
+
+        // Pre-allocate array list for better performance
+        // `sections.length` does not affect the performance because an array has an fixed size
+        List<BlockPos> list = new ArrayList<>(sections.length * 16 * 16 * 16);
 
         for (ChunkSection section : chunkSections) {
             if (section == null || section.isEmpty()) {
                 continue;
             }
 
-            int startY = section.getYOffset();
+            final int startY = section.getYOffset();
 
             for (int x = 0; x < 16; x++) {
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
-                        BlockState state = section.getBlockState(x, y, z);
-
+                        final BlockState state = section.getBlockState(x, y, z);
                         if (state.getLuminance() != 0) {
                             list.add(new BlockPos(startX + x, startY + y, startZ + z));
                         }
@@ -61,10 +62,6 @@ public abstract class MixinWorldChunk {
             }
         }
 
-        if (list.isEmpty()) {
-            return Stream.empty();
-        }
-
-        return list.stream();
+        return list.isEmpty() ? Stream.empty() : list.stream();
     }
 }

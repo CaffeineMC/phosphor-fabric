@@ -35,7 +35,6 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
     @Override
     public void propagateLevel(long sourceId, BlockState sourceState, long targetId, int level, boolean decrease) {
         int pendingLevel = this.pendingUpdates.get(targetId) & 0xFF;
-
         int propagatedLevel = this.getPropagatedLevel(sourceId, sourceState, targetId, level);
         int clampedLevel = MathHelper.clamp(propagatedLevel, 0, this.levelCount - 1);
 
@@ -45,16 +44,9 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
             return;
         }
 
-        boolean flag;
-        int resultLevel;
+        boolean flag = pendingLevel == 0xFF;
+        int resultLevel = flag ? MathHelper.clamp(this.getLevel(targetId), 0, this.levelCount - 1) : pendingLevel;
 
-        if (pendingLevel == 0xFF) {
-            flag = true;
-            resultLevel = MathHelper.clamp(this.getLevel(targetId), 0, this.levelCount - 1);
-        } else {
-            resultLevel = pendingLevel;
-            flag = false;
-        }
 
         if (clampedLevel == resultLevel) {
             this.updateLevel(sourceId, targetId, this.levelCount - 1, flag ? resultLevel : this.getLevel(targetId), pendingLevel, false);

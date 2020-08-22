@@ -117,11 +117,7 @@ public abstract class MixinChunkToNibbleArrayMap implements SharedNibbleArrayMap
      */
     @Overwrite
     public boolean containsKey(long chunkPos) {
-        if (this.isShared) {
-            return this.queue.getAsync(chunkPos) != null;
-        } else {
-            return this.queue.containsSync(chunkPos);
-        }
+        return this.isShared ? (this.queue.getAsync(chunkPos) != null) : this.queue.containsSync(chunkPos);
     }
 
     /**
