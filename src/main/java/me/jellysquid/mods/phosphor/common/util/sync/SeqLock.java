@@ -1,6 +1,5 @@
 package me.jellysquid.mods.phosphor.common.util.sync;
 
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
