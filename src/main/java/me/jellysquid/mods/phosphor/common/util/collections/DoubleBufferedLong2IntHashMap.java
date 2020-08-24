@@ -5,7 +5,8 @@ import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import me.jellysquid.mods.phosphor.common.util.sync.SeqLock;
+
+import java.util.concurrent.locks.StampedLock;
 
 /**
  * A double buffered Long->Object hash table which allows for multiple readers to see a consistent view without
@@ -31,7 +32,7 @@ public class DoubleBufferedLong2IntHashMap {
     // The lock used by other threads to grab values from the visible map asynchronously. This prevents other threads
     // from seeing partial updates while the changes are flushed. The lock implementation is specially selected to
     // optimize for the common case: infrequent writes, very frequent reads.
-    private final SeqLock lock = new SeqLock();
+    private final StampedLock lock = new StampedLock();
 
     // The pending return value as seen by the owning thread
     private int queuedDefaultReturnValue;
@@ -79,9 +80,9 @@ public class DoubleBufferedLong2IntHashMap {
         int ret;
 
         do {
-            stamp = this.lock.readBegin();
+            stamp = this.lock.tryOptimisticRead();
             ret = this.mapVisible.get(k);
-        } while (this.lock.shouldRetryRead(stamp));
+        } while (!this.lock.validate(stamp));
 
         return ret;
     }
@@ -91,7 +92,7 @@ public class DoubleBufferedLong2IntHashMap {
      */
     public void flushChangesSync() {
         // The return value above has to be updated before we try to early-exit
-        this.lock.writeLock();
+        final long writeLock = this.lock.writeLock();
 
         try {
             // First, update the return value of the collection
@@ -115,7 +116,7 @@ public class DoubleBufferedLong2IntHashMap {
                 }
             }
         } finally {
-            this.lock.writeUnlock();
+            this.lock.unlockWrite(writeLock);
         }
 
         this.mapUpdates.clear();
