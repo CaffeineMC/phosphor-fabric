@@ -76,15 +76,19 @@ public class DoubleBufferedLong2IntHashMap {
     }
 
     public int getAsync(long k) {
-        long stamp;
-        int ret;
+        while (true) {
+            final long stamp = this.lock.tryOptimisticRead();
 
-        do {
-            stamp = this.lock.tryOptimisticRead();
-            ret = this.mapVisible.get(k);
-        } while (!this.lock.validate(stamp));
+            // Long2IntOpenHashMap is not thread-safe and may throw ArrayIndexOutOfBoundsException when queried in an inconsistent state
+            try {
+                final int ret = this.mapVisible.get(k);
 
-        return ret;
+                if (this.lock.validate(stamp)) {
+                    return ret;
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+            }
+        }
     }
 
     /**

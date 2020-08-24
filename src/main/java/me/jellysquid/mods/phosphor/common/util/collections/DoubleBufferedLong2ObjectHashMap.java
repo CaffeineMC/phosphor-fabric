@@ -72,15 +72,19 @@ public class DoubleBufferedLong2ObjectHashMap<V> {
     }
 
     public V getAsync(long k) {
-        long stamp;
-        V ret;
+        while (true) {
+            final long stamp = this.lock.tryOptimisticRead();
 
-        do {
-            stamp = this.lock.tryOptimisticRead();
-            ret = this.mapLive.get(k);
-        } while (!this.lock.validate(stamp));
+            // Long2ObjectOpenHashMap is not thread-safe and may throw ArrayIndexOutOfBoundsException when queried in an inconsistent state
+            try {
+                final V ret = this.mapLive.get(k);
 
-        return ret;
+                if (this.lock.validate(stamp)) {
+                    return ret;
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+            }
+        }
     }
 
     public void flushChangesSync() {
