@@ -26,7 +26,7 @@ public class DoubleBufferedLong2IntHashMap {
     // The hash table of entries available to other threads
     private final Long2IntMap mapVisible;
 
-    // The ordered map of pending entry updates to be applied the visible hash table
+    // The map of pending entry updates to be applied to the visible hash table
     private final Long2IntMap mapUpdates;
 
     // The lock used by other threads to grab values from the visible map asynchronously. This prevents other threads
@@ -44,9 +44,7 @@ public class DoubleBufferedLong2IntHashMap {
     public DoubleBufferedLong2IntHashMap(int capacity, float loadFactor) {
         this.mapPending = new Long2IntOpenHashMap(capacity, loadFactor);
         this.mapVisible = new Long2IntOpenHashMap(capacity, loadFactor);
-
-        // Update order is important, use a linked collection type
-        this.mapUpdates = new Long2IntLinkedOpenHashMap(capacity, loadFactor);
+        this.mapUpdates = new Long2IntOpenHashMap(capacity, loadFactor);
     }
 
     public void defaultReturnValueSync(int v) {
