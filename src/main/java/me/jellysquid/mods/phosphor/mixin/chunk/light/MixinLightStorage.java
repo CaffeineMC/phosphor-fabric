@@ -99,7 +99,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     protected abstract void removeChunkData(ChunkLightProvider<?, ?> storage, long blockChunkPos);
 
     @Shadow
-    protected abstract ChunkNibbleArray getLightArray(M storage, long sectionPos);
+    protected abstract ChunkNibbleArray getLightArray(long sectionPos, boolean cached);
 
     @Shadow
     @Final
@@ -114,27 +114,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     private LongSet field_25621;
 
     private final StampedLock uncachedLightArraysLock = new StampedLock();
-
-    /**
-     * @reason Avoid copying large data structures, add locks
-     * @author JellySquid
-     */
-    @Overwrite
-    public ChunkNibbleArray getLightArray(long sectionPos, boolean cached) {
-        if (cached) {
-            return this.getLightArray(this.lightArrays, sectionPos);
-        } else {
-            // We can't be sure that callees won't mutate the underlying data, so this needs to be a
-            // write lock.
-            long stamp = this.uncachedLightArraysLock.writeLock();
-
-            try {
-                return this.getLightArray(this.uncachedLightArrays, sectionPos);
-            } finally {
-                this.uncachedLightArraysLock.unlockWrite(stamp);
-            }
-        }
-    }
 
     /**
      * Replaces the two set of calls to unpack the XYZ coordinates from the input to just one, storing the result as local

@@ -5,7 +5,8 @@ import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import me.jellysquid.mods.phosphor.common.util.sync.SeqLock;
+
+import java.util.concurrent.locks.StampedLock;
 
 /**
  * A double buffered Long->Object hash table which allows for multiple readers to see a consistent view without
@@ -25,13 +26,13 @@ public class DoubleBufferedLong2IntHashMap {
     // The hash table of entries available to other threads
     private final Long2IntMap mapVisible;
 
-    // The ordered map of pending entry updates to be applied the visible hash table
+    // The map of pending entry updates to be applied to the visible hash table
     private final Long2IntMap mapUpdates;
 
     // The lock used by other threads to grab values from the visible map asynchronously. This prevents other threads
     // from seeing partial updates while the changes are flushed. The lock implementation is specially selected to
     // optimize for the common case: infrequent writes, very frequent reads.
-    private final SeqLock lock = new SeqLock();
+    private final StampedLock lock = new StampedLock();
 
     // The pending return value as seen by the owning thread
     private int queuedDefaultReturnValue;
@@ -43,9 +44,7 @@ public class DoubleBufferedLong2IntHashMap {
     public DoubleBufferedLong2IntHashMap(int capacity, float loadFactor) {
         this.mapPending = new Long2IntOpenHashMap(capacity, loadFactor);
         this.mapVisible = new Long2IntOpenHashMap(capacity, loadFactor);
-
-        // Update order is important, use a linked collection type
-        this.mapUpdates = new Long2IntLinkedOpenHashMap(capacity, loadFactor);
+        this.mapUpdates = new Long2IntOpenHashMap(capacity, loadFactor);
     }
 
     public void defaultReturnValueSync(int v) {
@@ -75,15 +74,19 @@ public class DoubleBufferedLong2IntHashMap {
     }
 
     public int getAsync(long k) {
-        long stamp;
-        int ret;
+        while (true) {
+            final long stamp = this.lock.tryOptimisticRead();
 
-        do {
-            stamp = this.lock.readBegin();
-            ret = this.mapVisible.get(k);
-        } while (this.lock.shouldRetryRead(stamp));
+            // Long2IntOpenHashMap is not thread-safe and may throw ArrayIndexOutOfBoundsException when queried in an inconsistent state
+            try {
+                final int ret = this.mapVisible.get(k);
 
-        return ret;
+                if (this.lock.validate(stamp)) {
+                    return ret;
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+            }
+        }
     }
 
     /**
@@ -91,7 +94,7 @@ public class DoubleBufferedLong2IntHashMap {
      */
     public void flushChangesSync() {
         // The return value above has to be updated before we try to early-exit
-        this.lock.writeLock();
+        final long writeLock = this.lock.writeLock();
 
         try {
             // First, update the return value of the collection
@@ -115,7 +118,7 @@ public class DoubleBufferedLong2IntHashMap {
                 }
             }
         } finally {
-            this.lock.writeUnlock();
+            this.lock.unlockWrite(writeLock);
         }
 
         this.mapUpdates.clear();

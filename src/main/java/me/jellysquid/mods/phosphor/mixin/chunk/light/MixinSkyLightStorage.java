@@ -24,29 +24,39 @@ public abstract class MixinSkyLightStorage {
     @Overwrite
     public int getLight(long pos) {
         int posX = BlockPos.unpackLongX(pos);
-        int posY = BlockPos.unpackLongY(pos);
+        int posYOrig = BlockPos.unpackLongY(pos);
         int posZ = BlockPos.unpackLongZ(pos);
 
         int chunkX = ChunkSectionPos.getSectionCoord(posX);
-        int chunkY = ChunkSectionPos.getSectionCoord(posY);
+        int chunkYOrig = ChunkSectionPos.getSectionCoord(posYOrig);
         int chunkZ = ChunkSectionPos.getSectionCoord(posZ);
 
-        long chunk = ChunkSectionPos.asLong(chunkX, chunkY, chunkZ);
+        long chunkOrig = ChunkSectionPos.asLong(chunkX, chunkYOrig, chunkZ);
 
-        // This lock is really horrible. Maybe there is some way to work around it?
         StampedLock lock = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorageLock();
-        long stamp = lock.readLock();
+        long stamp;
 
         ChunkNibbleArray array;
 
-        try {
+        optimisticRead:
+        while (true) {
+            stamp = lock.tryOptimisticRead();
+
+            int posY = posYOrig;
+            int chunkY = chunkYOrig;
+            long chunk = chunkOrig;
+
             SkyLightStorage.Data data = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorage();
             SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
 
             int height = sdata.getHeight(ChunkSectionPos.withZeroZ(chunk));
 
             if (height == sdata.getDefaultHeight() || chunkY >= height) {
-                return 15;
+                if (lock.validate(stamp)) {
+                    return 15;
+                } else {
+                    continue;
+                }
             }
 
             array = data.get(chunk);
@@ -55,7 +65,11 @@ public abstract class MixinSkyLightStorage {
                 ++chunkY;
 
                 if (chunkY >= height) {
-                    return 15;
+                    if (lock.validate(stamp)) {
+                        return 15;
+                    } else {
+                        continue optimisticRead;
+                    }
                 }
 
                 chunk = ChunkSectionPosHelper.updateYLong(chunk, chunkY);
@@ -63,14 +77,14 @@ public abstract class MixinSkyLightStorage {
 
                 posY = chunkY << 4;
             }
-        } finally {
-            lock.unlockRead(stamp);
-        }
 
-        return array.get(
-                ChunkSectionPos.getLocalCoord(posX),
-                ChunkSectionPos.getLocalCoord(posY),
-                ChunkSectionPos.getLocalCoord(posZ)
-        );
+            if (lock.validate(stamp)) {
+                return array.get(
+                        ChunkSectionPos.getLocalCoord(posX),
+                        ChunkSectionPos.getLocalCoord(posY),
+                        ChunkSectionPos.getLocalCoord(posZ)
+                );
+            }
+        }
     }
 }
