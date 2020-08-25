@@ -1,5 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk;
 
+import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -37,11 +38,8 @@ public abstract class MixinWorldChunk {
         final int startX = this.pos.getStartX();
         final int startZ = this.pos.getStartZ();
 
+        List<BlockPos> list = new ArrayList<>();
         ChunkSection[] chunkSections = this.sections;
-
-        // Pre-allocate array list for better performance
-        // `sections.length` does not affect the performance because an array has an fixed size
-        List<BlockPos> list = new ArrayList<>(sections.length * 16 * 16 * 16);
 
         for (ChunkSection section : chunkSections) {
             if (section == null || section.isEmpty()) {
