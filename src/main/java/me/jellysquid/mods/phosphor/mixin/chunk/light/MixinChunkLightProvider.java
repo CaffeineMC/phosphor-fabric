@@ -59,7 +59,6 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
     @Inject(method = "clearChunkCache", at = @At("RETURN"))
     private void onCleanup(CallbackInfo ci) {
-        // This callback may be executed from the constructor above, and the object won't be initialized then
         Arrays.fill(this.cachedChunkPos, Long.MIN_VALUE);
         Arrays.fill(this.cachedChunkSections, null);
     }
