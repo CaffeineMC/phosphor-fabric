@@ -73,26 +73,25 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         final long chunkPos = ChunkPos.toLong(x >> 4, z >> 4);
         final long[] cachedChunkPos = this.cachedChunkPos;
 
-        ChunkSection[] sections = null;
+        final ChunkSection[] sections;
 
         for (int i = 0; i < 2; i++) {
+
             if (cachedChunkPos[i] == chunkPos) {
                 sections = this.cachedChunkSections[i];
+                if(sections != null) {
+                    final ChunkSection section = sections[y >> 4];
+                    return section == null ? DEFAULT_STATE : section.getBlockState(x & 15, y & 15, z & 15);
+                }
+
+                // sections == null:
                 break;
             }
+
         }
 
-        if (sections != null) {
-            final ChunkSection section = sections[y >> 4];
-
-            if (section == null) {
-                return DEFAULT_STATE;
-            }
-
-            return section.getBlockState(x & 15, y & 15, z & 15);
-        } else {
-            return this.getBlockStateFallback(chunkPos, x, y, z);
-        }
+        // null-fallback
+        return this.getBlockStateFallback(chunkPos, x, y, z);
     }
 
     private BlockState getBlockStateFallback(long chunkPos, int x, int y, int z) {
