@@ -207,7 +207,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             }
         }
 
-        int belowY = y + (-1 - chunkOffsetY * 16);
+        int belowY = y + (-1 - chunkOffsetY << 4);
         int belowChunkY = getSectionCoord(belowY);
 
         if (chunkY == belowChunkY || this.lightStorage.hasLight(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
