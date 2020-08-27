@@ -1,6 +1,5 @@
 package me.jellysquid.mods.phosphor.mixin.chunk;
 
-import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
