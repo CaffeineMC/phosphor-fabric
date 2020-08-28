@@ -5,15 +5,17 @@ import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.light.SkyLightStorage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
 
 import java.util.concurrent.locks.StampedLock;
 
 @Mixin(SkyLightStorage.class)
-public abstract class MixinSkyLightStorage {
+public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightStorage.Data> {
     /**
      * An optimized implementation which avoids constantly unpacking and repacking integer coordinates.
      *
@@ -86,5 +88,27 @@ public abstract class MixinSkyLightStorage {
                 );
             }
         }
+    }
+
+    @Shadow
+    protected abstract boolean isAboveTopmostLightArray(long sectionPos);
+
+    @Shadow
+    protected abstract boolean isLightEnabled(long sectionPos);
+
+    @Override
+    public int getLightWithoutLightmap(final long blockPos)
+    {
+        long sectionPos = ChunkSectionPos.offset(ChunkSectionPos.fromGlobalPos(blockPos), Direction.UP);
+
+        if (this.isAboveTopmostLightArray(sectionPos)) {
+            return this.isLightEnabled(sectionPos) ? 15 : 0;
+        }
+
+        ChunkNibbleArray lightmap;
+
+        for (; (lightmap = this.getLightArray(sectionPos, true)) == null; sectionPos = ChunkSectionPos.offset(sectionPos, Direction.UP));
+
+        return lightmap.get(ChunkSectionPos.getLocalCoord(BlockPos.unpackLongX(blockPos)), 0, ChunkSectionPos.getLocalCoord(BlockPos.unpackLongZ(blockPos)));
     }
 }
