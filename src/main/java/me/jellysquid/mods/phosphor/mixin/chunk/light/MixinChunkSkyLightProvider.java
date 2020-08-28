@@ -147,8 +147,9 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * - A special propagation method is used that allows the BlockState at {@param id} to be passed, allowing the code
      * which follows to simply re-use it instead of redundantly retrieving another block state.
      *
-     * Additionally this implements the cleanups discussed in MC-196542.
-     * In particular, this always passes adjacent positions to {@link LevelPropagatorExtended#propagateLevel(long, BlockState, long, int, boolean)}
+     * Additionally this implements the cleanups discussed in MC-196542. In particular:
+     * - This always passes adjacent positions to {@link LevelPropagatorExtended#propagateLevel(long, BlockState, long, int, boolean)}
+     * - This reduces map lookups in the skylight optimization code
      *
      * @reason Use faster implementation
      * @author JellySquid, PhiPro
@@ -208,30 +209,31 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             int adjX = x + dir.getOffsetX();
             int adjZ = z + dir.getOffsetZ();
 
-            int offsetY = 0;
+            long offsetId = BlockPos.asLong(adjX, y, adjZ);
+            long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
 
-            while (true) {
-                int adjY = y - offsetY;
+            boolean flag = chunkId == offsetChunkId;
 
-                long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
-                long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
+            if (flag || this.lightStorage.hasLight(offsetChunkId)) {
+                this.propagateLevel(id, fromState, offsetId, targetLevel, mergeAsMin);
+            }
 
-                boolean flag = chunkId == offsetChunkId;
+            if (flag) {
+                continue;
+            }
 
-                if (flag || this.lightStorage.hasLight(offsetChunkId)) {
+            // MC-196542: First iterate over sections to reduce map lookups
+            for (int offsetChunkY = chunkY - 1; offsetChunkY > belowChunkY; --offsetChunkY) {
+                if (!this.lightStorage.hasLight(ChunkSectionPosHelper.updateYLong(offsetChunkId, offsetChunkY))) {
+                    continue;
+                }
+
+                for (int offsetY = 15; offsetY >= 0; --offsetY) {
+                    int adjY = ChunkSectionPos.getWorldCoord(offsetChunkY) + offsetY;
+                    offsetId = BlockPos.asLong(adjX, adjY, adjZ);
+
                     // MC-196542: Pass adjacent source position
-                    BlockState state = offsetY == 0 ? fromState : AIR_BLOCK;
-                    this.propagateLevel(BlockPos.asLong(x, adjY, z), state, offsetId, targetLevel, mergeAsMin);
-                }
-
-                if (flag) {
-                    break;
-                }
-
-                offsetY++;
-
-                if (offsetY > chunkOffsetY * 16) {
-                    break;
+                    this.propagateLevel(BlockPos.asLong(x, adjY, z), AIR_BLOCK, offsetId, targetLevel, mergeAsMin);
                 }
             }
         }
