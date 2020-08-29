@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -15,6 +16,7 @@ import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightStorage;
 import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -23,7 +25,7 @@ import java.util.concurrent.locks.StampedLock;
 
 @SuppressWarnings("OverwriteModifiers")
 @Mixin(LightStorage.class)
-public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements SharedLightStorageAccess<M> {
+public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements SharedLightStorageAccess<M>, LightStorageAccess {
     @Shadow
     @Final
     protected M lightArrays;
@@ -113,11 +115,17 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     @Final
     private LongSet field_25621;
 
+    @Override
+    @Invoker("getLightArray")
+    public abstract ChunkNibbleArray callGetLightArray(final long sectionPos, final boolean cached);
+
     private final StampedLock uncachedLightArraysLock = new StampedLock();
 
     /**
      * Replaces the two set of calls to unpack the XYZ coordinates from the input to just one, storing the result as local
      * variables.
+     *
+     * Additionally, this handles lookups for positions without an associated lightmap.
      *
      * @reason Use faster implementation
      * @author JellySquid
@@ -131,6 +139,10 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
         long chunk = ChunkSectionPos.asLong(ChunkSectionPos.getSectionCoord(x), ChunkSectionPos.getSectionCoord(y), ChunkSectionPos.getSectionCoord(z));
 
         ChunkNibbleArray array = this.getLightArray(chunk, true);
+
+        if (array == null) {
+            return this.getLightWithoutLightmap(blockPos);
+        }
 
         return array.get(ChunkSectionPos.getLocalCoord(x), ChunkSectionPos.getLocalCoord(y), ChunkSectionPos.getLocalCoord(z));
     }
@@ -434,5 +446,10 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     @Override
     public StampedLock getStorageLock() {
         return this.uncachedLightArraysLock;
+    }
+
+    @Override
+    public int getLightWithoutLightmap(final long blockPos) {
+        return 0;
     }
 }

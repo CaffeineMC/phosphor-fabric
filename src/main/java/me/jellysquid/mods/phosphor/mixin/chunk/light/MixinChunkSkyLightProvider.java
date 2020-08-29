@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
@@ -13,6 +14,7 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.LightType;
+import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.ChunkSkyLightProvider;
@@ -21,6 +23,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 
 import static net.minecraft.util.math.ChunkSectionPos.getLocalCoord;
 import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
@@ -63,6 +66,10 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * - Avoid checking if the checked block is opaque twice.
      * - Avoid a redundant block state lookup by re-using {@param fromState}
      *
+     * Additionally this implements the cleanups discussed in MC-196542. In particular:
+     * - The handling of source-skylight is removed and is now handled by ordinary propagation
+     * - The handling of three-way propagations is removed, so the two provided positions must now always be adjacent
+     *
      * The rest of the implementation has been otherwise copied from vanilla, but is optimized to avoid constantly
      * (un)packing coordinates and to use an optimized direction lookup function.
      *
@@ -73,11 +80,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         if (toId == Long.MAX_VALUE) {
             return 15;
         } else if (fromId == Long.MAX_VALUE) {
-            if (!this.lightStorage.method_15565(toId)) {
-                return 15;
-            }
-
-            currentLevel = 0;
+            return 15; // MC-196524: Remove special handling of source-skylight
         } else if (currentLevel >= 15) {
             return currentLevel;
         }
@@ -105,47 +108,21 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         boolean verticalOnly = fromX == toX && fromZ == toZ;
 
         // The direction the light update is propagating
-        Direction dir;
-        Direction altDir = null;
+        Direction dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
 
-        if (fromId == Long.MAX_VALUE) {
-            dir = Direction.DOWN;
-        } else {
-            dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
-
-            if (dir == null) {
-                altDir = DirectionHelper.getVecDirection(toX - fromX, verticalOnly ? -1 : 0, toZ - fromZ);
-
-                if (altDir == null) {
-                    return 15;
-                }
-            }
+        if (dir == null) {
+            return 15; // MC-196542: The provided positions should always be adjacent
         }
 
         // Shape comparison checks are only meaningful if the blocks involved have non-empty shapes
         // If we're comparing between air blocks, this is meaningless
         if (!airPropagation) {
-            // If the two blocks are directly adjacent...
-            if (dir != null) {
-                VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
+            VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
 
-                if (toShape != VoxelShapes.fullCube()) {
-                    VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
+            if (toShape != VoxelShapes.fullCube()) {
+                VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, dir);
 
-                    if (LightUtil.unionCoversFullCube(fromShape, toShape)) {
-                        return 15;
-                    }
-                }
-            } else {
-                VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, altDir.getOpposite());
-
-                if (LightUtil.unionCoversFullCube(VoxelShapes.empty(), toShape)) {
-                    return 15;
-                }
-
-                VoxelShape fromShape = this.getOpaqueShape(fromState, fromX, fromY, fromZ, Direction.DOWN);
-
-                if (LightUtil.unionCoversFullCube(fromShape, VoxelShapes.empty())) {
+                if (LightUtil.unionCoversFullCube(fromShape, toShape)) {
                     return 15;
                 }
             }
@@ -153,7 +130,8 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
         int out = this.getSubtractedLight(toState, toX, toY, toZ);
 
-        if (out == 0 && currentLevel == 0 && (fromId == Long.MAX_VALUE || verticalOnly && fromY > toY)) {
+        // MC-196542: No special handling for source-skylight
+        if (out == 0 && currentLevel == 0 && verticalOnly && fromY > toY) {
             return 0;
         }
 
@@ -169,10 +147,12 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * - A special propagation method is used that allows the BlockState at {@param id} to be passed, allowing the code
      * which follows to simply re-use it instead of redundantly retrieving another block state.
      *
-     * This copies the vanilla implementation as close as possible.
+     * Additionally this implements the cleanups discussed in MC-196542. In particular:
+     * - This always passes adjacent positions to {@link LevelPropagatorExtended#propagateLevel(long, BlockState, long, int, boolean)}
+     * - This reduces map lookups in the skylight optimization code
      *
      * @reason Use faster implementation
-     * @author JellySquid
+     * @author JellySquid, PhiPro
      */
     @Override
     @Overwrite
@@ -213,7 +193,9 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int belowChunkY = getSectionCoord(belowY);
 
         if (chunkY == belowChunkY || this.lightStorage.hasLight(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
+            // MC-196542: Pass adjacent source position
+            BlockState state = chunkY == belowChunkY ? fromState : AIR_BLOCK;
+            this.propagateLevel(BlockPos.asLong(x, belowY + 1, z), state, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
         }
 
         int aboveY = y + 1;
@@ -227,31 +209,106 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             int adjX = x + dir.getOffsetX();
             int adjZ = z + dir.getOffsetZ();
 
-            int offsetY = 0;
+            long offsetId = BlockPos.asLong(adjX, y, adjZ);
+            long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
 
-            while (true) {
-                int adjY = y - offsetY;
+            boolean isWithinOriginChunk = chunkId == offsetChunkId;
 
-                long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
-                long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
+            if (isWithinOriginChunk || this.lightStorage.hasLight(offsetChunkId)) {
+                this.propagateLevel(id, fromState, offsetId, targetLevel, mergeAsMin);
+            }
 
-                boolean flag = chunkId == offsetChunkId;
+            if (isWithinOriginChunk) {
+                continue;
+            }
 
-                if (flag || this.lightStorage.hasLight(offsetChunkId)) {
-                    this.propagateLevel(id, fromState, offsetId, targetLevel, mergeAsMin);
+            // MC-196542: First iterate over sections to reduce map lookups
+            for (int offsetChunkY = chunkY - 1; offsetChunkY > belowChunkY; --offsetChunkY) {
+                if (!this.lightStorage.hasLight(ChunkSectionPosHelper.updateYLong(offsetChunkId, offsetChunkY))) {
+                    continue;
                 }
 
-                if (flag) {
-                    break;
-                }
+                for (int offsetY = 15; offsetY >= 0; --offsetY) {
+                    int adjY = ChunkSectionPos.getWorldCoord(offsetChunkY) + offsetY;
+                    offsetId = BlockPos.asLong(adjX, adjY, adjZ);
 
-                offsetY++;
-
-                if (offsetY > chunkOffsetY * 16) {
-                    break;
+                    // MC-196542: Pass adjacent source position
+                    this.propagateLevel(BlockPos.asLong(x, adjY, z), AIR_BLOCK, offsetId, targetLevel, mergeAsMin);
                 }
             }
         }
     }
 
+    @Unique
+    private int getLightWithoutLightmap(final long blockPos) {
+        return 15 - ((LightStorageAccess) this.lightStorage).getLightWithoutLightmap(blockPos);
+    }
+
+    /**
+     * This implements the cleanups discussed in MC-196542. In particular:
+     * - The special handling of source-skylight is removed and is instead taken care of via ordinary propagation
+     * - The logic for looking up light values without associated lightmap is now uniformly applied to all directions and moved to {@link LightStorageAccess#getLightWithoutLightmap(long)}
+     * - This passes adjacent positions to {@link #getPropagatedLevel(long, long, int)}
+     * - This fixes a bug when propagating direct skylight from horizontal neighbors
+     *
+     * @author PhiPro
+     * @reason Implement MC-196542
+     */
+    @Overwrite
+    public int recalculateLevel(long id, long excludedId, int maxLevel) {
+        int currentLevel = maxLevel;
+
+        // MC-196542: Remove special handling of source-skylight
+
+        long chunkId = ChunkSectionPos.fromGlobalPos(id);
+        ChunkNibbleArray lightmap = ((LightStorageAccess) this.lightStorage).callGetLightArray(chunkId, true);
+
+        for(Direction direction : DIRECTIONS) {
+            long adjId = BlockPos.offset(id, direction);
+
+            if (adjId == excludedId) {
+                continue;
+            }
+
+            long adjChunkId = ChunkSectionPos.fromGlobalPos(adjId);
+
+            ChunkNibbleArray adjLightmap;
+            if (chunkId == adjChunkId) {
+                adjLightmap = lightmap;
+            } else {
+                adjLightmap = ((LightStorageAccess) this.lightStorage).callGetLightArray(adjChunkId, true);
+            }
+
+            final int adjLevel;
+
+            if (adjLightmap == null) {
+                // MC-196542: Apply this lookup uniformly to all directions and move it into LightStorage
+                adjLevel = this.getLightWithoutLightmap(adjId);
+            } else {
+                adjLevel = this.getCurrentLevelFromArray(adjLightmap, adjId);
+            }
+
+            // MC-196542: Pass adjacent source position
+            int propagatedLevel = this.getPropagatedLevel(adjId, id, adjLevel);
+
+            if (currentLevel > propagatedLevel) {
+                currentLevel = propagatedLevel;
+            }
+
+            if (currentLevel == 0) {
+                return currentLevel;
+            }
+        }
+
+        return currentLevel;
+    }
+
+    /**
+     * @author PhiPro
+     * @reason MC-196542: There is no need to reset any level other than the directly requested position.
+     */
+    @Overwrite
+    public void resetLevel(long id) {
+        super.resetLevel(id);
+    }
 }
