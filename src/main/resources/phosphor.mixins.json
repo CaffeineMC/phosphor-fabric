@@ -15,7 +15,8 @@
         "chunk.light.MixinLevelPropagator",
         "chunk.light.MixinLightStorage",
         "chunk.light.MixinSkyLightStorage",
-        "chunk.light.MixinSkyLightStorageData"
+        "chunk.light.MixinSkyLightStorageData",
+        "world.MixinThreadedAnvilChunkStorage"
     ],
     "injectors": {
         "defaultRequire": 1
