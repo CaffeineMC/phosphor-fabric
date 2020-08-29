@@ -107,7 +107,9 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         ChunkNibbleArray lightmap;
 
-        for (; (lightmap = this.getLightArray(sectionPos, true)) == null; sectionPos = ChunkSectionPos.offset(sectionPos, Direction.UP));
+        while ((lightmap = this.getLightArray(sectionPos, true)) == null) {
+            sectionPos = ChunkSectionPos.offset(sectionPos, Direction.UP);
+        }
 
         return lightmap.get(ChunkSectionPos.getLocalCoord(BlockPos.unpackLongX(blockPos)), 0, ChunkSectionPos.getLocalCoord(BlockPos.unpackLongZ(blockPos)));
     }

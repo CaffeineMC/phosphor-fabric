@@ -212,13 +212,13 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             long offsetId = BlockPos.asLong(adjX, y, adjZ);
             long offsetChunkId = ChunkSectionPos.fromGlobalPos(offsetId);
 
-            boolean flag = chunkId == offsetChunkId;
+            boolean isWithinOriginChunk = chunkId == offsetChunkId;
 
-            if (flag || this.lightStorage.hasLight(offsetChunkId)) {
+            if (isWithinOriginChunk || this.lightStorage.hasLight(offsetChunkId)) {
                 this.propagateLevel(id, fromState, offsetId, targetLevel, mergeAsMin);
             }
 
-            if (flag) {
+            if (isWithinOriginChunk) {
                 continue;
             }
 
