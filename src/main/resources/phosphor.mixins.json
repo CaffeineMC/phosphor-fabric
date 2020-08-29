@@ -17,7 +17,8 @@
         "chunk.light.MixinSkyLightStorage",
         "chunk.light.MixinSkyLightStorageData",
         "chunk.light.MixinServerLightingProvider",
-        "world.MixinWorld"
+        "world.MixinWorld",
+        "chunk.MixinProtoChunk"
     ],
     "injectors": {
         "defaultRequire": 1
