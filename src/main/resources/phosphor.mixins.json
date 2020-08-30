@@ -16,6 +16,9 @@
         "chunk.light.MixinLightStorage",
         "chunk.light.MixinSkyLightStorage",
         "chunk.light.MixinSkyLightStorageData",
+        "chunk.light.MixinServerLightingProvider",
+        "chunk.MixinProtoChunk",
+        "world.MixinWorld",
         "world.MixinThreadedAnvilChunkStorage"
     ],
     "injectors": {
