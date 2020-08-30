@@ -5,10 +5,13 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.world.chunk.light.LightingProvider;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,5 +69,15 @@ public abstract class MixinWorldChunk {
         }
 
         return list.stream();
+    }
+
+    @Redirect(
+        method = "setBlockState(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/BlockState;Z)Lnet/minecraft/block/BlockState;",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/chunk/light/LightingProvider;updateSectionStatus(Lnet/minecraft/util/math/BlockPos;Z)V"
+        )
+    )
+    private void disablelLightmapHandling(final LightingProvider lightingProvider, final BlockPos pos, final boolean status) {
     }
 }
