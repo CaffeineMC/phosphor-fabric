@@ -11,10 +11,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Mixin(WorldChunk.class)
@@ -37,12 +34,37 @@ public abstract class MixinWorldChunk {
      */
     @Overwrite
     public Stream<BlockPos> getLightSourcesStream() {
-        final int startX = this.pos.getStartX();
-        final int startZ = this.pos.getStartZ();
+        List<BlockPos> list = new ArrayList<>();
 
-        return Arrays.stream(this.sections).flatMap(section -> {
-            final int startY = section.getYOffset();
-            return IntStream.range(0, 16).boxed().flatMap(x -> IntStream.range(0, 16).boxed().flatMap(y -> IntStream.range(0, 16).boxed().map(z -> section.getBlockState(x, y, z).getLuminance() == 0 ? null : new BlockPos(startX + x, startY + y, startZ + z))));
-        }).filter(Objects::nonNull);
+        int startX = this.pos.getStartX();
+        int startZ = this.pos.getStartZ();
+
+        ChunkSection[] chunkSections = this.sections;
+
+        for (ChunkSection section : chunkSections) {
+            if (section == null || section.isEmpty()) {
+                continue;
+            }
+
+            int startY = section.getYOffset();
+
+            for (int x = 0; x < 16; x++) {
+                for (int y = 0; y < 16; y++) {
+                    for (int z = 0; z < 16; z++) {
+                        BlockState state = section.getBlockState(x, y, z);
+
+                        if (state.getLuminance() != 0) {
+                            list.add(new BlockPos(startX + x, startY + y, startZ + z));
+                        }
+                    }
+                }
+            }
+        }
+
+        if (list.isEmpty()) {
+            return Stream.empty();
+        }
+
+        return list.stream();
     }
 }
