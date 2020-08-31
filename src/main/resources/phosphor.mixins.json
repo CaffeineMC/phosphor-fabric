@@ -19,7 +19,8 @@
         "chunk.light.MixinServerLightingProvider",
         "chunk.MixinProtoChunk",
         "world.MixinWorld",
-        "world.MixinThreadedAnvilChunkStorage"
+        "world.MixinThreadedAnvilChunkStorage",
+        "chunk.MixinChunkStatus"
     ],
     "injectors": {
         "defaultRequire": 1
