@@ -21,7 +21,8 @@
         "chunk.MixinProtoChunk",
         "world.MixinWorld",
         "world.MixinThreadedAnvilChunkStorage",
-        "chunk.MixinChunkStatus"
+        "chunk.MixinChunkStatus",
+        "world.MixinChunkSerializer"
     ],
     "injectors": {
         "defaultRequire": 1
