@@ -25,7 +25,7 @@ public abstract class MixinWorld implements WorldAccess {
     )
     private void addLightmap(final BlockPos pos, final BlockState state, final int flags, final int maxUpdateDepth, final CallbackInfoReturnable<Boolean> ci, final WorldChunk chunk) {
         if (ChunkSection.isEmpty(chunk.getSectionArray()[pos.getY() >> 4])) {
-            this.getChunkManager().getLightingProvider().updateSectionStatus(pos, false);
+            this.getChunkManager().getLightingProvider().setSectionStatus(pos, false);
         }
     }
 
@@ -42,7 +42,7 @@ public abstract class MixinWorld implements WorldAccess {
     )
     private void removeLightmap(final BlockPos pos, final BlockState state, final int flags, final int maxUpdateDepth, final CallbackInfoReturnable<Boolean> ci, final WorldChunk chunk) {
         if (ChunkSection.isEmpty(chunk.getSectionArray()[pos.getY() >> 4])) {
-            this.getChunkManager().getLightingProvider().updateSectionStatus(pos, true);
+            this.getChunkManager().getLightingProvider().setSectionStatus(pos, true);
         }
     }
 }

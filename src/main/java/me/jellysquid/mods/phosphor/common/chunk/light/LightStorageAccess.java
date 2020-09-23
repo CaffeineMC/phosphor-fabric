@@ -3,7 +3,7 @@ package me.jellysquid.mods.phosphor.common.chunk.light;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 
 public interface LightStorageAccess {
-    ChunkNibbleArray callGetLightArray(long sectionPos, boolean cached);
+    ChunkNibbleArray callGetLightSection(long sectionPos, boolean cached);
 
     /**
      * Returns the light value for a position that does not have an associated lightmap.

@@ -23,20 +23,20 @@ import net.minecraft.world.chunk.ChunkStatus;
 @Mixin(ThreadedAnvilChunkStorage.class)
 public abstract class MixinThreadedAnvilChunkStorage implements ThreadedAnvilChunkStorageAccess {
     @Shadow
-    protected abstract CompletableFuture<Either<List<Chunk>, Unloaded>> createChunkRegionFuture(final ChunkPos centerChunk, final int margin, final IntFunction<ChunkStatus> distanceToStatus);
+    protected abstract CompletableFuture<Either<List<Chunk>, Unloaded>> getRegion(final ChunkPos centerChunk, final int margin, final IntFunction<ChunkStatus> distanceToStatus);
 
     @Override
     @Invoker("releaseLightTicket")
     public abstract void invokeReleaseLightTicket(ChunkPos pos);
 
     @Redirect(
-        method = "createBorderFuture(Lnet/minecraft/server/world/ChunkHolder;)Ljava/util/concurrent/CompletableFuture;",
+        method = "makeChunkAccessible(Lnet/minecraft/server/world/ChunkHolder;)Ljava/util/concurrent/CompletableFuture;",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/server/world/ChunkHolder;createFuture(Lnet/minecraft/world/chunk/ChunkStatus;Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;)Ljava/util/concurrent/CompletableFuture;"
+            target = "Lnet/minecraft/server/world/ChunkHolder;getChunkAt(Lnet/minecraft/world/chunk/ChunkStatus;Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;)Ljava/util/concurrent/CompletableFuture;"
         )
     )
     private CompletableFuture<Either<Chunk, Unloaded>> enforceNeighborsLoaded(final ChunkHolder holder, final ChunkStatus targetStatus, final ThreadedAnvilChunkStorage chunkStorage) {
-        return this.createChunkRegionFuture(holder.getPos(), 1, ChunkStatus::getTargetGenerationStatus).thenApply(either -> either.mapLeft(list -> list.get(list.size() / 2)));
+        return this.getRegion(holder.getPos(), 1, ChunkStatus::byDistanceFromFull).thenApply(either -> either.mapLeft(list -> list.get(list.size() / 2)));
     }
 }

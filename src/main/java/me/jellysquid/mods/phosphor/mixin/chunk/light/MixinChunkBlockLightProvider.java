@@ -65,7 +65,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
     public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel) {
         if (toId == Long.MAX_VALUE) {
             return 15;
-        } else if (fromId == Long.MAX_VALUE && ((BlockLightStorageAccess) this.lightStorage).isLightEnabled(ChunkSectionPos.fromGlobalPos(toId))) {
+        } else if (fromId == Long.MAX_VALUE && ((BlockLightStorageAccess) this.lightStorage).isLightEnabled(ChunkSectionPos.fromBlockPos(toId))) {
             // Disable blocklight sources before initial lighting
             return currentLevel + 15 - this.getLightSourceLuminance(toId);
         } else if (currentLevel >= 15) {
@@ -133,7 +133,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
             long adjChunk = ChunkSectionPos.asLong(getSectionCoord(adjX), getSectionCoord(adjY), getSectionCoord(adjZ));
 
-            if ((chunk == adjChunk) || this.lightStorage.hasLight(adjChunk)) {
+            if ((chunk == adjChunk) || this.lightStorage.hasSection(adjChunk)) {
                 this.propagateLevel(id, state, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
             }
         }
