@@ -7,6 +7,6 @@ accessible class net/minecraft/world/chunk/ChunkStatus$LoadTask
 
 accessible class net/minecraft/server/world/ServerLightingProvider$Stage
 
-accessible method net/minecraft/world/chunk/light/LightStorage hasLight (J)Z
+accessible method net/minecraft/world/chunk/light/LightStorage hasSection (J)Z
 accessible method net/minecraft/world/chunk/light/SkyLightStorage method_15565 (J)Z
 accessible method net/minecraft/world/chunk/light/SkyLightStorage isAboveMinHeight (I)Z

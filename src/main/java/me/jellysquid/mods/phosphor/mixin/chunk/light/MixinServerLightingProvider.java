@@ -36,26 +36,26 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
      * @reason Re-implement
      */
     @Overwrite
-    public void updateSectionStatus(final ChunkSectionPos pos, final boolean empty)
+    public void setSectionStatus(final ChunkSectionPos pos, final boolean empty)
     {
         if (empty) {
             // Schedule after light updates have been carried out
             this.enqueue(pos.getSectionX(), pos.getSectionZ(), ServerLightingProvider.Stage.POST_UPDATE, Util.debugRunnable(() -> {
-                super.updateSectionStatus(pos, true);
+                super.setSectionStatus(pos, true);
             },
                 () -> "updateSectionStatus " + pos + " " + true
             ));
         } else {
             // Schedule before light updates are carried out
             this.enqueue(pos.getSectionX(), pos.getSectionZ(), () -> 0, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
-                super.updateSectionStatus(pos, false);
+                super.setSectionStatus(pos, false);
             },
                 () -> "updateSectionStatus " + pos + " " + false
             ));
 
             // Schedule another version in POST_UPDATE to achieve reliable final state
             this.enqueue(pos.getSectionX(), pos.getSectionZ(), ServerLightingProvider.Stage.POST_UPDATE, Util.debugRunnable(() -> {
-                super.updateSectionStatus(pos, false);
+                super.setSectionStatus(pos, false);
             },
                 () -> "updateSectionStatus " + pos + " " + false
             ));
@@ -72,12 +72,12 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
 
             for (int i = 0; i < chunkSections.length; ++i) {
                 if (!ChunkSection.isEmpty(chunkSections[i])) {
-                    super.updateSectionStatus(ChunkSectionPos.from(chunkPos, i), false);
+                    super.setSectionStatus(ChunkSectionPos.from(chunkPos, i), false);
                 }
             }
 
             if (chunk.isLightOn()) {
-                super.setLightEnabled(chunkPos, true);
+                super.setColumnEnabled(chunkPos, true);
             }
         },
             () -> "setupLightmaps " + chunkPos
@@ -105,7 +105,7 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
 
         this.enqueue(chunkPos.x, chunkPos.z, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
             if (!chunk.isLightOn()) {
-                super.setLightEnabled(chunkPos, true);
+                super.setColumnEnabled(chunkPos, true);
             }
 
             if (!excludeBlocks) {

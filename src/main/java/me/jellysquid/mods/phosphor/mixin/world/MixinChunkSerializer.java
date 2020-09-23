@@ -46,11 +46,11 @@ public abstract class MixinChunkSerializer {
             final int y = section.getByte("Y");
 
             if (section.contains("BlockLight", 7)) {
-                lightingProvider.queueData(LightType.BLOCK, ChunkSectionPos.from(pos, y), new ChunkNibbleArray(section.getByteArray("BlockLight")), true);
+                lightingProvider.enqueueSectionData(LightType.BLOCK, ChunkSectionPos.from(pos, y), new ChunkNibbleArray(section.getByteArray("BlockLight")), true);
             }
 
             if (hasSkyLight && section.contains("SkyLight", 7)) {
-                lightingProvider.queueData(LightType.SKY, ChunkSectionPos.from(pos, y), new ChunkNibbleArray(section.getByteArray("SkyLight")), true);
+                lightingProvider.enqueueSectionData(LightType.SKY, ChunkSectionPos.from(pos, y), new ChunkNibbleArray(section.getByteArray("SkyLight")), true);
             }
         }
     }

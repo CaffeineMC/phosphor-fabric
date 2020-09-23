@@ -22,7 +22,6 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
      * @reason Use faster implementation
      * @author JellySquid
      */
-    @SuppressWarnings({"unchecked"})
     @Overwrite
     public int getLight(long pos) {
         int posX = BlockPos.unpackLongX(pos);
@@ -51,7 +50,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
             SkyLightStorage.Data data = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorage();
             SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
 
-            int height = sdata.getHeight(ChunkSectionPos.withZeroZ(chunk));
+            int height = sdata.getHeight(ChunkSectionPos.withZeroY(chunk));
 
             if (height == sdata.getDefaultHeight() || chunkY >= height) {
                 if (lock.validate(stamp)) {
@@ -91,23 +90,23 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
     }
 
     @Shadow
-    protected abstract boolean isAboveTopmostLightArray(long sectionPos);
+    protected abstract boolean isAtOrAboveTopmostSection(long sectionPos);
 
     @Shadow
-    protected abstract boolean isLightEnabled(long sectionPos);
+    protected abstract boolean isSectionEnabled(long sectionPos);
 
     @Override
     public int getLightWithoutLightmap(final long blockPos)
     {
-        long sectionPos = ChunkSectionPos.offset(ChunkSectionPos.fromGlobalPos(blockPos), Direction.UP);
+        long sectionPos = ChunkSectionPos.offset(ChunkSectionPos.fromBlockPos(blockPos), Direction.UP);
 
-        if (this.isAboveTopmostLightArray(sectionPos)) {
-            return this.isLightEnabled(sectionPos) ? 15 : 0;
+        if (this.isAtOrAboveTopmostSection(sectionPos)) {
+            return this.isSectionEnabled(sectionPos) ? 15 : 0;
         }
 
         ChunkNibbleArray lightmap;
 
-        while ((lightmap = this.getLightArray(sectionPos, true)) == null) {
+        while ((lightmap = this.getLightSection(sectionPos, true)) == null) {
             sectionPos = ChunkSectionPos.offset(sectionPos, Direction.UP);
         }
 

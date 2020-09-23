@@ -27,7 +27,7 @@ public class MixinChunkStatus {
 
     @Shadow
     @Final
-    private static ChunkStatus.LoadTask STATUS_BUMP_NO_GEN_TASK;
+    private static ChunkStatus.LoadTask STATUS_BUMP_LOAD_TASK;
 
     @Redirect(
         method = "<clinit>",
@@ -47,7 +47,7 @@ public class MixinChunkStatus {
                     either -> getPreLightFuture(lightingProvider, either)
                 ),
             (status, world, structureManager, lightingProvider, function, chunk) ->
-                STATUS_BUMP_NO_GEN_TASK.doWork(status, world, structureManager, lightingProvider, function, chunk).thenCompose(
+                STATUS_BUMP_LOAD_TASK.doWork(status, world, structureManager, lightingProvider, function, chunk).thenCompose(
                     either -> getPreLightFuture(lightingProvider, either)
                 )
             );
