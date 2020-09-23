@@ -1,6 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
+import me.jellysquid.mods.phosphor.common.chunk.light.BlockLightStorageAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
@@ -64,7 +65,8 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
     public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel) {
         if (toId == Long.MAX_VALUE) {
             return 15;
-        } else if (fromId == Long.MAX_VALUE) {
+        } else if (fromId == Long.MAX_VALUE && ((BlockLightStorageAccess) this.lightStorage).isLightEnabled(ChunkSectionPos.fromGlobalPos(toId))) {
+            // Disable blocklight sources before initial lighting
             return currentLevel + 15 - this.getLightSourceLuminance(toId);
         } else if (currentLevel >= 15) {
             return currentLevel;

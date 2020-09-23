@@ -14,12 +14,15 @@
         "chunk.light.MixinChunkToNibbleArrayMap",
         "chunk.light.MixinLevelPropagator",
         "chunk.light.MixinLightStorage",
+        "chunk.light.MixinBlockLightStorage",
         "chunk.light.MixinSkyLightStorage",
         "chunk.light.MixinSkyLightStorageData",
         "chunk.light.MixinServerLightingProvider",
         "chunk.MixinProtoChunk",
         "world.MixinWorld",
-        "world.MixinThreadedAnvilChunkStorage"
+        "world.MixinThreadedAnvilChunkStorage",
+        "chunk.MixinChunkStatus",
+        "world.MixinChunkSerializer"
     ],
     "injectors": {
         "defaultRequire": 1

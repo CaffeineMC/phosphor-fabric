@@ -2,6 +2,9 @@ accessWidener v1 named
 
 accessible class net/minecraft/block/AbstractBlock$AbstractBlockState$ShapeCache
 
+accessible class net/minecraft/world/chunk/ChunkStatus$GenerationTask
+accessible class net/minecraft/world/chunk/ChunkStatus$LoadTask
+
 accessible class net/minecraft/server/world/ServerLightingProvider$Stage
 
 accessible method net/minecraft/world/chunk/light/LightStorage hasLight (J)Z
