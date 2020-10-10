@@ -12,4 +12,6 @@ public interface SkyLightStorageDataAccess {
      * Returns the height map value for the given block column in the world.
      */
     int getHeight(long pos);
+
+    void updateMinHeight(int y);
 }

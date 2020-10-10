@@ -3,17 +3,19 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
+import me.jellysquid.mods.phosphor.common.chunk.light.LevelPropagatorAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.chunk.light.LevelPropagator;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(LevelPropagator.class)
-public abstract class MixinLevelPropagator implements LevelPropagatorExtended, LevelUpdateListener {
+public abstract class MixinLevelPropagator implements LevelPropagatorExtended, LevelUpdateListener, LevelPropagatorAccess {
     @Shadow
     @Final
     private Long2ByteMap pendingUpdates;
@@ -30,6 +32,10 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
 
     @Shadow
     protected abstract void updateLevel(long sourceId, long id, int level, int currentLevel, int pendingLevel, boolean decrease);
+
+    @Override
+    @Invoker("propagateLevel")
+    public abstract void invokePropagateLevel(long sourceId, long targetId, int level, boolean decrease);
 
     // [VanillaCopy] LevelPropagator#propagateLevel(long, long, int, boolean)
     @Override

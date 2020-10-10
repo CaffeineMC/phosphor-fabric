@@ -7,6 +7,7 @@
         "block.MixinShapeCache",
         "chunk.MixinChunkNibbleArray",
         "chunk.MixinWorldChunk",
+        "chunk.light.MixinLightingProvider",
         "chunk.light.MixinBlockLightStorageData",
         "chunk.light.MixinChunkBlockLightProvider",
         "chunk.light.MixinChunkLightProvider",
@@ -23,6 +24,9 @@
         "world.MixinThreadedAnvilChunkStorage",
         "chunk.MixinChunkStatus",
         "world.MixinChunkSerializer"
+    ],
+    "client": [
+	    "client.world.MixinClientWorld"
     ],
     "injectors": {
         "defaultRequire": 1
