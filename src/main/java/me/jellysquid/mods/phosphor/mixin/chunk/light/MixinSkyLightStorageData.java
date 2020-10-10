@@ -84,4 +84,12 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
     public int getHeight(long pos) {
         return this.topArraySectionYQueue.getAsync(pos);
     }
+
+    @Override
+    public void updateMinHeight(final int y) {
+        if (this.minSectionY > y) {
+            this.minSectionY = y;
+            this.columnToTopSection.defaultReturnValue(this.minSectionY);
+        }
+    }
 }

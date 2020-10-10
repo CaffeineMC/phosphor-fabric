@@ -8,9 +8,7 @@ import net.minecraft.util.Util;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.ChunkSection;
-import net.minecraft.world.chunk.light.LightingProvider;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -20,11 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.IntSupplier;
 
 @Mixin(ServerLightingProvider.class)
-public abstract class MixinServerLightingProvider extends LightingProvider implements ServerLightingProviderAccess {
-    private MixinServerLightingProvider(final ChunkProvider chunkProvider, final boolean hasBlockLight, final boolean hasSkyLight) {
-        super(chunkProvider, hasBlockLight, hasSkyLight);
-    }
-
+public abstract class MixinServerLightingProvider extends MixinLightingProvider implements ServerLightingProviderAccess {
     @Shadow
     protected abstract void enqueue(int x, int z, IntSupplier completedLevelSupplier, ServerLightingProvider.Stage stage, Runnable task);
 
@@ -77,8 +71,10 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
             }
 
             if (chunk.isLightOn()) {
-                super.setColumnEnabled(chunkPos, true);
+                super.enableSourceLight(ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z)));
             }
+
+            super.enableLightUpdates(ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z)));
         },
             () -> "setupLightmaps " + chunkPos
         ));
@@ -105,7 +101,7 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
 
         this.enqueue(chunkPos.x, chunkPos.z, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
             if (!chunk.isLightOn()) {
-                super.setColumnEnabled(chunkPos, true);
+                super.enableSourceLight(ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z)));
             }
 
             if (!excludeBlocks) {

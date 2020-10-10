@@ -4,9 +4,11 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfo;
 import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfoAccess;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
+import me.jellysquid.mods.phosphor.common.chunk.light.InitialLightingAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
+import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
@@ -24,6 +26,7 @@ import net.minecraft.world.chunk.light.LevelPropagator;
 import net.minecraft.world.chunk.light.LightStorage;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -34,7 +37,7 @@ import java.util.BitSet;
 
 @Mixin(ChunkLightProvider.class)
 public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S extends LightStorage<M>>
-        extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener {
+        extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener, InitialLightingAccess {
     private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
 
     @Shadow
@@ -279,5 +282,37 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         int z = BlockPos.unpackLongZ(blockPos) & 15;
 
         return (x << 8) | (y << 4) | z;
+    }
+
+    @Shadow
+    @Final
+    protected LightStorage<?> lightStorage;
+
+    /**
+     * @author PhiPro
+     * @reason Re-implement completely. Change specification of the method.
+     * Now controls both source light and light updates. Disabling now additionally removes all data associated to the chunk.
+     */
+    @Overwrite
+    public void setColumnEnabled(final ChunkPos pos, final boolean enabled) {
+        final long chunkPos = ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(pos.x, 0, pos.z));
+        final LightStorageAccess lightStorage = (LightStorageAccess) this.lightStorage;
+
+        if (enabled) {
+            lightStorage.invokeSetColumnEnabled(chunkPos, true);
+            lightStorage.setLightUpdatesEnabled(chunkPos, true);
+        } else {
+            lightStorage.setLightUpdatesEnabled(chunkPos, false);
+        }
+    }
+
+    @Override
+    public void enableSourceLight(final long chunkPos) {
+        ((LightStorageAccess) this.lightStorage).invokeSetColumnEnabled(chunkPos, true);
+    }
+
+    @Override
+    public void enableLightUpdates(final long chunkPos) {
+        ((LightStorageAccess) this.lightStorage).setLightUpdatesEnabled(chunkPos, true);
     }
 }
