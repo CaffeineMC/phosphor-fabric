@@ -12,7 +12,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Arrays;
 import java.util.concurrent.locks.StampedLock;
@@ -131,5 +133,23 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         }
 
         return ret;
+    }
+
+    @Inject(
+        method = "enqueueRemoveSection(J)V",
+        at = @At("HEAD"),
+        cancellable = true
+    )
+    private void disable_enqueueRemoveSection(final CallbackInfo ci) {
+        ci.cancel();
+    }
+
+    @Inject(
+        method = "enqueueAddSection(J)V",
+        at = @At("HEAD"),
+        cancellable = true
+    )
+    private void disable_enqueueAddSection(final CallbackInfo ci) {
+        ci.cancel();
     }
 }
