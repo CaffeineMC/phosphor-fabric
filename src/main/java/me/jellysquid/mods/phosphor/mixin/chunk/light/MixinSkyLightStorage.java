@@ -11,7 +11,10 @@ import net.minecraft.world.chunk.light.SkyLightStorage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
+import java.util.Arrays;
 import java.util.concurrent.locks.StampedLock;
 
 @Mixin(SkyLightStorage.class)
@@ -111,5 +114,22 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         }
 
         return lightmap.get(ChunkSectionPos.getLocalCoord(BlockPos.unpackLongX(blockPos)), 0, ChunkSectionPos.getLocalCoord(BlockPos.unpackLongZ(blockPos)));
+    }
+
+    @Redirect(
+        method = "createSection(J)Lnet/minecraft/world/chunk/ChunkNibbleArray;",
+        at = @At(
+            value = "NEW",
+            target = "()Lnet/minecraft/world/chunk/ChunkNibbleArray;"
+        )
+    )
+    private ChunkNibbleArray initializeLightmap(final long pos) {
+        final ChunkNibbleArray ret = new ChunkNibbleArray();
+
+        if (this.isSectionEnabled(pos)) {
+            Arrays.fill(ret.asByteArray(), (byte) -1);
+        }
+
+        return ret;
     }
 }
