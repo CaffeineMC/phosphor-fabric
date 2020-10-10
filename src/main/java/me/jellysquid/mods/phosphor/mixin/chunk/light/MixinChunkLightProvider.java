@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfo;
 import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfoAccess;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
+import me.jellysquid.mods.phosphor.common.chunk.light.InitialLightingAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
@@ -34,7 +35,7 @@ import java.util.BitSet;
 
 @Mixin(ChunkLightProvider.class)
 public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S extends LightStorage<M>>
-        extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener {
+        extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener, InitialLightingAccess {
     private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
 
     @Shadow
@@ -279,5 +280,19 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         int z = BlockPos.unpackLongZ(blockPos) & 15;
 
         return (x << 8) | (y << 4) | z;
+    }
+
+    @Shadow
+    @Final
+    protected LightStorage<?> lightStorage;
+
+    @Override
+    public void prepareInitialLighting(final long chunkPos) {
+        ((InitialLightingAccess) this.lightStorage).prepareInitialLighting(chunkPos);
+    }
+
+    @Override
+    public void cancelInitialLighting(final long chunkPos) {
+        ((InitialLightingAccess) this.lightStorage).cancelInitialLighting(chunkPos);
     }
 }

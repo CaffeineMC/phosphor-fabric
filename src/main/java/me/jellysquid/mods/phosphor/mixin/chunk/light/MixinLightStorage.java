@@ -2,6 +2,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
+import me.jellysquid.mods.phosphor.common.chunk.light.InitialLightingAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
@@ -10,6 +11,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.LightType;
+import net.minecraft.world.SectionDistanceLevelPropagator;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
@@ -25,7 +27,11 @@ import java.util.concurrent.locks.StampedLock;
 
 @SuppressWarnings("OverwriteModifiers")
 @Mixin(LightStorage.class)
-public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> implements SharedLightStorageAccess<M>, LightStorageAccess {
+public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> extends SectionDistanceLevelPropagator implements SharedLightStorageAccess<M>, LightStorageAccess, InitialLightingAccess {
+    protected MixinLightStorage() {
+        super(0, 0, 0);
+    }
+
     @Shadow
     @Final
     protected M storage;
@@ -118,6 +124,11 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     @Override
     @Invoker("getLightSection")
     public abstract ChunkNibbleArray callGetLightSection(final long sectionPos, final boolean cached);
+
+    @Shadow
+    protected int getInitialLevel(long id) {
+        return 0;
+    }
 
     private final StampedLock uncachedLightArraysLock = new StampedLock();
 
@@ -447,5 +458,13 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> impl
     @Override
     public int getLightWithoutLightmap(final long blockPos) {
         return 0;
+    }
+
+    @Override
+    public void prepareInitialLighting(long chunkPos) {
+    }
+
+    @Override
+    public void cancelInitialLighting(long chunkPos) {
     }
 }

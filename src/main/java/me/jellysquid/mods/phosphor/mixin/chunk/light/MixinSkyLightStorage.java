@@ -1,5 +1,7 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
@@ -11,6 +13,7 @@ import net.minecraft.world.chunk.light.SkyLightStorage;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -151,5 +154,35 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
     )
     private void disable_enqueueAddSection(final CallbackInfo ci) {
         ci.cancel();
+    }
+
+    /**
+     * Forceload a lightmap above the world for initial skylight
+     */
+    @Unique
+    private final LongSet preInitSkylightChunks = new LongOpenHashSet();
+
+    @Override
+    public void prepareInitialLighting(final long chunkPos) {
+        this.preInitSkylightChunks.add(chunkPos);
+        this.updateLevel(Long.MAX_VALUE, ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), 16, ChunkSectionPos.unpackZ(chunkPos)), 1, true);
+    }
+
+    @Override
+    public void cancelInitialLighting(final long chunkPos) {
+        if (this.preInitSkylightChunks.remove(chunkPos)) {
+            this.updateLevel(Long.MAX_VALUE, ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), 16, ChunkSectionPos.unpackZ(chunkPos)), 2, false);
+        }
+    }
+
+    @Override
+    protected int getInitialLevel(final long id) {
+        final int ret = super.getInitialLevel(id);
+
+        if (ret >= 2 && ChunkSectionPos.unpackY(id) == 16 && this.preInitSkylightChunks.contains(ChunkSectionPos.withZeroY(id))) {
+            return 1;
+        }
+
+        return ret;
     }
 }

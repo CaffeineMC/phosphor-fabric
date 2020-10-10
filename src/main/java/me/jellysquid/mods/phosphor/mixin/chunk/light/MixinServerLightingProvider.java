@@ -1,5 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
+import me.jellysquid.mods.phosphor.common.chunk.light.InitialLightingAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.ServerLightingProviderAccess;
 import me.jellysquid.mods.phosphor.common.world.ThreadedAnvilChunkStorageAccess;
 import net.minecraft.server.world.ServerLightingProvider;
@@ -15,6 +16,9 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.IntSupplier;
@@ -78,6 +82,8 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
 
             if (chunk.isLightOn()) {
                 super.setColumnEnabled(chunkPos, true);
+            } else {
+                ((InitialLightingAccess) this).prepareInitialLighting(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z));
             }
         },
             () -> "setupLightmaps " + chunkPos
@@ -89,6 +95,18 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
         },
             (runnable) -> this.enqueue(chunkPos.x, chunkPos.z, () -> 0, ServerLightingProvider.Stage.POST_UPDATE, runnable)
         );
+    }
+
+    @Inject(
+        method = "updateChunkStatus(Lnet/minecraft/util/math/ChunkPos;)V",
+        at = @At("TAIL")
+    )
+    private void cancelInitialLighting(final ChunkPos pos, final CallbackInfo ci) {
+        this.enqueue(pos.x, pos.z, () -> 0, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
+            ((InitialLightingAccess) this).cancelInitialLighting(ChunkSectionPos.asLong(pos.x, 0, pos.z));
+        },
+            () -> "cancelInitialLighting " + pos
+        ));
     }
 
     @Shadow
