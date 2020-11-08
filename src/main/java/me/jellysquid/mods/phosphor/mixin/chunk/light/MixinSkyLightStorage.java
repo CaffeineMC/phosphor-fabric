@@ -1,7 +1,9 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import me.jellysquid.mods.phosphor.common.chunk.light.LevelPropagatorAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
@@ -9,7 +11,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.ChunkNibbleArray;
+import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.SkyLightStorage;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -184,5 +188,132 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         }
 
         return ret;
+    }
+
+    @Unique
+    private final LongSet initSkylightChunks = new LongOpenHashSet();
+
+    @Shadow
+    @Final
+    private LongSet enabledColumns;
+
+    /**
+     * @author PhiPro
+     * @reason Re-implement completely
+     */
+    @Overwrite
+    public void setColumnEnabled(final long chunkPos, final boolean enabled) {
+        if (enabled) {
+            if (preInitSkylightChunks.contains(chunkPos)) {
+                initSkylightChunks.add(chunkPos);
+                this.checkForUpdates();
+            } else {
+                this.enabledColumns.add(chunkPos);
+            }
+        } else {
+            this.enabledColumns.remove(chunkPos);
+            this.initSkylightChunks.remove(chunkPos);
+            this.checkForUpdates();
+        }
+    }
+
+    @Unique
+    private static void spreadSourceSkylight(final LevelPropagatorAccess lightProvider, final long src, final Direction dir) {
+        lightProvider.invokePropagateLevel(src, BlockPos.offset(src, dir), 0, true);
+    }
+
+    /**
+     * @author PhiPro
+     * @reason Re-implement completely
+     */
+    @Overwrite
+    public void updateLight(ChunkLightProvider<SkyLightStorage.Data, ?> lightProvider, boolean doSkylight, boolean skipEdgeLightPropagation) {
+        super.updateLight(lightProvider, doSkylight, skipEdgeLightPropagation);
+
+        if (!doSkylight || !this.hasUpdates) {
+            return;
+        }
+
+        for (final LongIterator it = this.initSkylightChunks.iterator(); it.hasNext(); ) {
+            final long chunkPos = it.nextLong();
+
+            final LevelPropagatorAccess levelPropagator = (LevelPropagatorAccess) lightProvider;
+            final int minY = this.fillSkylightColumn(lightProvider, chunkPos);
+
+            this.enabledColumns.add(chunkPos);
+            this.preInitSkylightChunks.remove(chunkPos);
+            this.updateLevel(Long.MAX_VALUE, ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), 16, ChunkSectionPos.unpackZ(chunkPos)), 2, false);
+
+            if (this.hasSection(ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), minY, ChunkSectionPos.unpackZ(chunkPos)))) {
+                final long blockPos = BlockPos.asLong(ChunkSectionPos.getBlockCoord(ChunkSectionPos.unpackX(chunkPos)), ChunkSectionPos.getBlockCoord(minY), ChunkSectionPos.getBlockCoord(ChunkSectionPos.unpackZ(chunkPos)));
+
+                for (int x = 0; x < 16; ++x) {
+                    for (int z = 0; z < 16; ++z) {
+                        spreadSourceSkylight(levelPropagator, BlockPos.add(blockPos, x, 16, z), Direction.DOWN);
+                    }
+                }
+            }
+
+            for (final Direction dir : Direction.Type.HORIZONTAL) {
+                // Skip propagations into sections directly exposed to skylight that are initialized in this update cycle
+                boolean spread = !this.initSkylightChunks.contains(ChunkSectionPos.offset(chunkPos, dir));
+
+                for (int y = 16; y > minY; --y) {
+                    final long sectionPos = ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), y, ChunkSectionPos.unpackZ(chunkPos));
+                    final long neighborSectionPos = ChunkSectionPos.offset(sectionPos, dir);
+
+                    if (!this.hasSection(neighborSectionPos)) {
+                        continue;
+                    }
+
+                    if (!spread) {
+                        if (this.readySections.contains(neighborSectionPos)) {
+                            spread = true;
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    final long blockPos = BlockPos.asLong(ChunkSectionPos.getBlockCoord(ChunkSectionPos.unpackX(sectionPos)), ChunkSectionPos.getBlockCoord(y), ChunkSectionPos.getBlockCoord(ChunkSectionPos.unpackZ(sectionPos)));
+
+                    final int ox = 15 * Math.max(dir.getOffsetX(), 0);
+                    final int oz = 15 * Math.max(dir.getOffsetZ(), 0);
+
+                    final int dx = Math.abs(dir.getOffsetZ());
+                    final int dz = Math.abs(dir.getOffsetX());
+
+                    for (int t = 0; t < 16; ++t) {
+                        for (int dy = 0; dy < 16; ++dy) {
+                            spreadSourceSkylight(levelPropagator, BlockPos.add(blockPos, ox + t * dx, dy, oz + t * dz), dir);
+                        }
+                    }
+                }
+            }
+        }
+
+        this.initSkylightChunks.clear();
+
+        this.hasUpdates = false;
+    }
+
+    /**
+     * Fill all sections above the topmost block with source skylight.
+     * @return The section containing the topmost block or the section corresponding to {@link SkyLightStorage.Data#minSectionY} if none exists.
+     */
+    private int fillSkylightColumn(final ChunkLightProvider<SkyLightStorage.Data, ?> lightProvider, final long chunkPos) {
+        // TODO: Implement
+        return 0;
+    }
+
+    @Shadow
+    private volatile boolean hasUpdates;
+
+    /**
+     * @author PhiPro
+     * @reason Re-implement completely
+     */
+    @Overwrite
+    private void checkForUpdates() {
+        this.hasUpdates = !this.initSkylightChunks.isEmpty();
     }
 }
