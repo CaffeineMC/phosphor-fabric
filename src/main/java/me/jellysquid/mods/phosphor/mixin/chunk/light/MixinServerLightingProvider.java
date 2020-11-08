@@ -1,6 +1,5 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.light.InitialLightingAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.ServerLightingProviderAccess;
 import me.jellysquid.mods.phosphor.common.world.ThreadedAnvilChunkStorageAccess;
 import net.minecraft.server.world.ServerLightingProvider;
@@ -9,26 +8,17 @@ import net.minecraft.util.Util;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.ChunkSection;
-import net.minecraft.world.chunk.light.LightingProvider;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.IntSupplier;
 
 @Mixin(ServerLightingProvider.class)
-public abstract class MixinServerLightingProvider extends LightingProvider implements ServerLightingProviderAccess {
-    private MixinServerLightingProvider(final ChunkProvider chunkProvider, final boolean hasBlockLight, final boolean hasSkyLight) {
-        super(chunkProvider, hasBlockLight, hasSkyLight);
-    }
-
+public abstract class MixinServerLightingProvider extends MixinLightingProvider implements ServerLightingProviderAccess {
     @Shadow
     protected abstract void enqueue(int x, int z, IntSupplier completedLevelSupplier, ServerLightingProvider.Stage stage, Runnable task);
 
@@ -81,10 +71,10 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
             }
 
             if (chunk.isLightOn()) {
-                super.setColumnEnabled(chunkPos, true);
-            } else {
-                ((InitialLightingAccess) this).prepareInitialLighting(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z));
+                super.enableSourceLight(ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z)));
             }
+
+            super.enableLightUpdates(ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z)));
         },
             () -> "setupLightmaps " + chunkPos
         ));
@@ -95,18 +85,6 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
         },
             (runnable) -> this.enqueue(chunkPos.x, chunkPos.z, () -> 0, ServerLightingProvider.Stage.POST_UPDATE, runnable)
         );
-    }
-
-    @Inject(
-        method = "updateChunkStatus(Lnet/minecraft/util/math/ChunkPos;)V",
-        at = @At("TAIL")
-    )
-    private void cancelInitialLighting(final ChunkPos pos, final CallbackInfo ci) {
-        this.enqueue(pos.x, pos.z, () -> 0, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
-            ((InitialLightingAccess) this).cancelInitialLighting(ChunkSectionPos.asLong(pos.x, 0, pos.z));
-        },
-            () -> "cancelInitialLighting " + pos
-        ));
     }
 
     @Shadow
@@ -123,7 +101,7 @@ public abstract class MixinServerLightingProvider extends LightingProvider imple
 
         this.enqueue(chunkPos.x, chunkPos.z, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
             if (!chunk.isLightOn()) {
-                super.setColumnEnabled(chunkPos, true);
+                super.enableSourceLight(ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(chunkPos.x, 0, chunkPos.z)));
             }
 
             if (!excludeBlocks) {

@@ -25,6 +25,9 @@
         "chunk.MixinChunkStatus",
         "world.MixinChunkSerializer"
     ],
+    "client": [
+	    "client.world.MixinClientWorld"
+    ],
     "injectors": {
         "defaultRequire": 1
   }

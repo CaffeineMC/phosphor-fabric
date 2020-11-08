@@ -1,7 +1,7 @@
 package me.jellysquid.mods.phosphor.common.chunk.light;
 
 public interface InitialLightingAccess {
-    void prepareInitialLighting(long chunkPos);
+    void enableSourceLight(long chunkPos);
 
-    void cancelInitialLighting(long chunkPos);
+    void enableLightUpdates(long chunkPos);
 }
