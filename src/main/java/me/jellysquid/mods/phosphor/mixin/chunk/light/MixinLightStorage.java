@@ -8,10 +8,12 @@ import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
+import me.jellysquid.mods.phosphor.common.chunk.light.IReadonly;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
+import me.jellysquid.mods.phosphor.common.util.chunk.light.EmptyChunkNibbleArray;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
@@ -225,10 +227,24 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
         if (oldLevel >= 2 && level < 2) {
             this.nonOptimizableSections.add(id);
+
+            if (this.enabledChunks.contains(ChunkSectionPos.withZeroY(id)) && !this.vanillaLightmapsToRemove.remove(id) && this.getLightSection(id, true) == null) {
+                this.storage.put(id, this.createTrivialVanillaLightmap(id));
+                this.dirtySections.add(id);
+                this.storage.clearCache();
+            }
         }
 
         if (oldLevel < 2 && level >= 2) {
             this.nonOptimizableSections.remove(id);
+
+            if (this.enabledChunks.contains(id)) {
+                final ChunkNibbleArray lightmap = this.getLightSection(id, true);
+
+                if (lightmap != null && ((IReadonly) lightmap).isReadonly()) {
+                    this.vanillaLightmapsToRemove.add(id);
+                }
+            }
         }
     }
 
@@ -258,6 +274,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         this.initializeChunks();
         this.removeChunks(chunkLightProvider);
         this.removeTrivialLightmaps(chunkLightProvider);
+        this.removeVanillaLightmaps(chunkLightProvider);
         this.addQueuedLightmaps(chunkLightProvider);
 
         final LongIterator it;
@@ -406,7 +423,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     }
 
     @Unique
-    private final LongSet enabledChunks = new LongOpenHashSet();
+    protected final LongSet enabledChunks = new LongOpenHashSet();
     @Unique
     protected final Long2IntMap lightmapComplexities = setDefaultReturnValue(new Long2IntOpenHashMap(), -1);
 
@@ -416,6 +433,8 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     private final LongSet markedDisabledChunks = new LongOpenHashSet();
     @Unique
     private final LongSet trivialLightmaps = new LongOpenHashSet();
+    @Unique
+    private final LongSet vanillaLightmapsToRemove = new LongOpenHashSet();
 
     // This is put here since the relevant methods to overwrite are located in LightStorage
     @Unique
@@ -431,11 +450,16 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     protected ChunkNibbleArray getOrAddLightmap(final long sectionPos) {
         ChunkNibbleArray lightmap = this.getLightSection(sectionPos, true);
 
-        if (lightmap != null) {
-            return lightmap;
+        if (lightmap == null) {
+            lightmap = this.createSection(sectionPos);
+        } else {
+            if (((IReadonly) lightmap).isReadonly()) {
+                lightmap = lightmap.copy();
+                this.vanillaLightmapsToRemove.remove(sectionPos);
+            } else {
+                return lightmap;
+            }
         }
-
-        lightmap = this.createSection(sectionPos);
 
         this.storage.put(sectionPos, lightmap);
         this.storage.clearCache();
@@ -486,8 +510,14 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     }
 
     @Unique
+    protected ChunkNibbleArray getLightmap(final long sectionPos) {
+        final ChunkNibbleArray lightmap = this.getLightSection(sectionPos, true);
+        return lightmap == null || ((IReadonly) lightmap).isReadonly() ? null : lightmap;
+    }
+
+    @Unique
     protected boolean hasLightmap(final long sectionPos) {
-        return this.getLightSection(sectionPos, true) != null;
+        return this.getLightmap(sectionPos) != null;
     }
 
     /**
@@ -589,10 +619,33 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
                 }
             }
 
+            // Add lightmaps for vanilla compatibility and try to recover stripped data from vanilla saves
+
+            for (int i = -1; i < 17; ++i) {
+                final long sectionPos = ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), i, ChunkSectionPos.unpackZ(chunkPos));
+
+                if (this.nonOptimizableSections.contains(sectionPos) && this.getLightSection(sectionPos, true) == null) {
+                    this.storage.put(sectionPos, this.createInitialVanillaLightmap(sectionPos));
+                    this.dirtySections.add(sectionPos);
+                }
+            }
+
             this.enabledChunks.add(chunkPos);
         }
 
+        this.storage.clearCache();
+
         this.markedEnabledChunks.clear();
+    }
+
+    @Unique
+    protected ChunkNibbleArray createInitialVanillaLightmap(final long sectionPos) {
+        return this.createTrivialVanillaLightmap(sectionPos);
+    }
+
+    @Unique
+    protected ChunkNibbleArray createTrivialVanillaLightmap(final long sectionPos) {
+        return new EmptyChunkNibbleArray();
     }
 
     @Unique
@@ -655,11 +708,15 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
             return false;
         }
 
-        this.lightmapComplexities.remove(sectionPos);
-        this.trivialLightmaps.remove(sectionPos);
         this.dirtySections.add(sectionPos);
 
-        return true;
+        if (this.lightmapComplexities.remove(sectionPos) == -1) {
+            this.vanillaLightmapsToRemove.remove(sectionPos);
+            return false;
+        } else {
+            this.trivialLightmaps.remove(sectionPos);
+            return true;
+        }
     }
 
     @Unique
@@ -680,6 +737,18 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
             this.onUnloadSection(it.nextLong());
         }
 
+        // Add trivial lightmaps for vanilla compatibility
+
+        for (final LongIterator it = this.trivialLightmaps.iterator(); it.hasNext(); ) {
+            final long sectionPos = it.nextLong();
+
+            if (this.nonOptimizableSections.contains(sectionPos)) {
+                this.storage.put(sectionPos, this.createTrivialVanillaLightmap(sectionPos));
+            }
+        }
+
+        this.storage.clearCache();
+
         // Remove pending light updates for sections that no longer support light propagations
 
         for (final LongIterator it = this.trivialLightmaps.iterator(); it.hasNext(); ) {
@@ -694,6 +763,30 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     }
 
     @Unique
+    private void removeVanillaLightmaps(final ChunkLightProvider<?, ?> lightProvider) {
+        for (final LongIterator it = this.vanillaLightmapsToRemove.iterator(); it.hasNext(); ) {
+            final long sectionPos = it.nextLong();
+
+            this.storage.removeChunk(sectionPos);
+            this.dirtySections.add(sectionPos);
+        }
+
+        this.storage.clearCache();
+
+        // Remove pending light updates for sections that no longer support light propagations
+
+        for (final LongIterator it = this.vanillaLightmapsToRemove.iterator(); it.hasNext(); ) {
+            final long sectionPos = it.nextLong();
+
+            if (!this.hasSection(sectionPos)) {
+                this.removeSection(lightProvider, sectionPos);
+            }
+        }
+
+        this.vanillaLightmapsToRemove.clear();
+    }
+
+    @Unique
     private void addQueuedLightmaps(final ChunkLightProvider<?, ?> lightProvider) {
         for (final ObjectIterator<Long2ObjectMap.Entry<ChunkNibbleArray>> it = Long2ObjectMaps.fastIterator(this.queuedSections); it.hasNext(); ) {
             final Long2ObjectMap.Entry<ChunkNibbleArray> entry = it.next();
@@ -701,7 +794,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
             final long sectionPos = entry.getLongKey();
             final ChunkNibbleArray lightmap = entry.getValue();
 
-            final ChunkNibbleArray oldLightmap = this.getLightSection(sectionPos, true);
+            final ChunkNibbleArray oldLightmap = this.getLightmap(sectionPos);
 
             if (lightmap != oldLightmap) {
                 this.removeSection(lightProvider, sectionPos);
@@ -716,6 +809,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
                     this.onLoadSection(sectionPos);
                 }
 
+                this.vanillaLightmapsToRemove.remove(sectionPos);
                 this.setLightmapComplexity(sectionPos, this.getInitialLightmapComplexity(sectionPos, lightmap));
             }
         }

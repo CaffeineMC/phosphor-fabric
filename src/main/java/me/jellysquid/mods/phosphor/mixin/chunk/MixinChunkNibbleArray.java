@@ -1,5 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk;
 
+import me.jellysquid.mods.phosphor.common.chunk.light.IReadonly;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -10,7 +11,7 @@ import org.spongepowered.asm.mixin.Shadow;
  * the right bit index of a nibble.
  */
 @Mixin(ChunkNibbleArray.class)
-public abstract class MixinChunkNibbleArray {
+public abstract class MixinChunkNibbleArray implements IReadonly {
     @Shadow
     protected byte[] byteArray;
 
@@ -38,6 +39,10 @@ public abstract class MixinChunkNibbleArray {
      */
     @Overwrite
     private void set(int idx, int value) {
+        if (this.isReadonly()) {
+            throw new UnsupportedOperationException("Cannot modify readonly ChunkNibbleArray");
+        }
+
         byte[] arr = this.byteArray;
 
         if (arr == null) {
@@ -49,5 +54,10 @@ public abstract class MixinChunkNibbleArray {
 
         arr[byteIdx] = (byte) ((arr[byteIdx] & ~(15 << shift))
                 | ((value & 15) << shift));
+    }
+
+    @Override
+    public boolean isReadonly() {
+        return false;
     }
 }
