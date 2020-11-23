@@ -55,8 +55,6 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         return this.getPropagatedLevel(fromId, null, toId, currentLevel);
     }
 
-    private int counterBranchA, counterBranchB, counterBranchC;
-
     /**
      * This breaks up the call to method_20479 into smaller parts so we do not have to pass a mutable heap object
      * to the method in order to extract the light result. This has a few other advantages, allowing us to:

@@ -187,7 +187,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
      */
     @Override
     public void cancelUpdatesForChunk(long sectionPos) {
-        long key = getBucketKeyForSection(sectionPos);
+        long key = this.getBucketKeyForSection(sectionPos);
         BitSet bits = this.removeBucketByKey(key);
 
         if (bits != null && !bits.isEmpty()) {
