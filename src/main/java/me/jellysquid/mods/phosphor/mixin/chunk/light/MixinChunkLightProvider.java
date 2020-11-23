@@ -188,7 +188,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     @Override
     public void cancelUpdatesForChunk(long sectionPos) {
         long key = getBucketKeyForSection(sectionPos);
-        BitSet bits = this.removeChunkBucket(key);
+        BitSet bits = this.removeBucketByKey(key);
 
         if (bits != null && !bits.isEmpty()) {
             int startX = ChunkSectionPos.unpackX(sectionPos) << 4;
@@ -207,47 +207,28 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
     @Override
     public void onPendingUpdateRemoved(long blockPos) {
-        long key = getBucketKeyForBlock(blockPos);
+        long key = this.getBucketKeyForBlock(blockPos);
+        BitSet bits = this.getBucketForKey(key);
 
-        BitSet bits;
+        if (bits != null) {
+            bits.clear(getBucketLocalIndex(blockPos));
 
-        if (this.prevChunkBucketKey == key) {
-            bits = this.prevChunkBucketSet;
-        } else {
-            bits = this.buckets.get(key);
-
-            if (bits == null) {
-                return;
+            if (bits.isEmpty()) {
+                this.removeBucketByKey(key);
             }
-        }
-
-        bits.clear(getLocalIndex(blockPos));
-
-        if (bits.isEmpty()) {
-            this.removeChunkBucket(key);
         }
     }
 
     @Override
     public void onPendingUpdateAdded(long blockPos) {
-        long key = getBucketKeyForBlock(blockPos);
+        long key = this.getBucketKeyForBlock(blockPos);
+        BitSet bits = this.getBucketForKey(key);
 
-        BitSet bits;
-
-        if (this.prevChunkBucketKey == key) {
-            bits = this.prevChunkBucketSet;
-        } else {
-            bits = this.buckets.get(key);
-
-            if (bits == null) {
-                this.buckets.put(key, bits = new BitSet(16 * 16 * 16));
-            }
-
-            this.prevChunkBucketKey = key;
-            this.prevChunkBucketSet = bits;
+        if (bits == null) {
+            bits = this.createBucket(key);
         }
 
-        bits.set(getLocalIndex(blockPos));
+        bits.set(getBucketLocalIndex(blockPos));
     }
 
     // Used to mask a long-encoded block position into a bucket key by dropping the first 4 bits of each component
@@ -257,11 +238,37 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         return blockPos & BLOCK_TO_BUCKET_KEY_MASK;
     }
 
+    private BitSet getBucketForKey(long key) {
+        if (this.prevChunkBucketKey == key) {
+            return this.prevChunkBucketSet;
+        }
+
+        BitSet bits = this.buckets.get(key);
+
+        this.prevChunkBucketKey = key;
+        this.prevChunkBucketSet = bits;
+
+        return bits;
+    }
+
+    private BitSet createBucket(long key) {
+        BitSet bits = new BitSet(16 * 16 * 16);
+
+        if (this.buckets.put(key, bits) != null) {
+            throw new IllegalStateException("Bucket already existed");
+        }
+
+        this.prevChunkBucketSet = bits;
+        this.prevChunkBucketKey = key;
+
+        return bits;
+    }
+
     private long getBucketKeyForSection(long sectionPos) {
         return BlockPos.asLong(ChunkSectionPos.unpackX(sectionPos) << 4, ChunkSectionPos.unpackY(sectionPos) << 4, ChunkSectionPos.unpackZ(sectionPos) << 4);
     }
 
-    private BitSet removeChunkBucket(long key) {
+    private BitSet removeBucketByKey(long key) {
         BitSet set = this.buckets.remove(key);
 
         if (this.prevChunkBucketSet == set) {
@@ -273,7 +280,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     }
 
     // Finds the bit-flag index of a local position within a chunk section
-    private static int getLocalIndex(long blockPos) {
+    private static int getBucketLocalIndex(long blockPos) {
         int x = BlockPos.unpackLongX(blockPos) & 15;
         int y = BlockPos.unpackLongY(blockPos) & 15;
         int z = BlockPos.unpackLongZ(blockPos) & 15;
