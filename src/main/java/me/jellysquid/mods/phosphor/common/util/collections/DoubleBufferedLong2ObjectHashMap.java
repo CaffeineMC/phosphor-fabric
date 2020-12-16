@@ -70,11 +70,14 @@ public class DoubleBufferedLong2ObjectHashMap<V> {
 
     public V getAsync(long k) {
         long stamp;
-        V ret;
+        V ret = null;
 
         do {
             stamp = this.lock.tryOptimisticRead();
-            ret = this.mapShared.get(k);
+
+            try {
+                ret = this.mapShared.get(k);
+            } catch (ArrayIndexOutOfBoundsException ignored) { } // Swallow memory errors on failed optimistic reads
         } while (!this.lock.validate(stamp));
 
         return ret;
