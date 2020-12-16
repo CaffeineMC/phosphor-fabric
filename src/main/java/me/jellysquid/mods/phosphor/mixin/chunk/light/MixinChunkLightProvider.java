@@ -17,6 +17,7 @@ import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.ChunkSection;
@@ -39,6 +40,7 @@ import java.util.BitSet;
 public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S extends LightStorage<M>>
         extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener, InitialLightingAccess {
     private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
+    private static final ChunkSection[] EMPTY_SECTION_ARRAY = new ChunkSection[16];
 
     @Shadow
     @Final
@@ -72,52 +74,38 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     // [VanillaCopy] method_20479
     @Override
     public BlockState getBlockStateForLighting(int x, int y, int z) {
-        if (y < 0 || y >= 256) {
+        if (World.isHeightInvalid(y)) {
             return DEFAULT_STATE;
         }
 
         final long chunkPos = ChunkPos.toLong(x >> 4, z >> 4);
-        final long[] cachedChunkPos = this.cachedChunkPos;
-
-        ChunkSection[] sections = null;
 
         for (int i = 0; i < 2; i++) {
-            if (cachedChunkPos[i] == chunkPos) {
-                sections = this.cachedChunkSections[i];
-                break;
+            if (this.cachedChunkPos[i] == chunkPos) {
+                return this.getBlockStateFromSection(this.cachedChunkSections[i], x, y, z);
             }
         }
 
-        if (sections != null) {
-            final ChunkSection section = sections[y >> 4];
-
-            if (section == null) {
-                return DEFAULT_STATE;
-            }
-
-            return section.getBlockState(x & 15, y & 15, z & 15);
-        } else {
-            return this.getBlockStateFallback(chunkPos, x, y, z);
-        }
+        return this.getBlockStateForLightingUncached(x, y, z);
     }
 
-    private BlockState getBlockStateFallback(long chunkPos, int x, int y, int z) {
-        final Chunk chunk = (Chunk) this.chunkProvider.getChunk(x >> 4, z >> 4);
-        final ChunkSection[] sections;
+    private BlockState getBlockStateForLightingUncached(int x, int y, int z) {
+        return this.getBlockStateFromSection(this.getAndCacheChunkSections(x >> 4, z >> 4), x, y, z);
+    }
 
-        BlockState blockState = null;
+    private BlockState getBlockStateFromSection(ChunkSection[] sections, int x, int y, int z) {
+        ChunkSection section = sections[y >> 4];
 
-        if (chunk != null) {
-            sections = chunk.getSectionArray();
-
-            ChunkSection section = sections[y >> 4];
-
-            if (section != null) {
-                blockState = section.getBlockState(x & 15, y & 15, z & 15);
-            }
-        } else {
-            sections = null;
+        if (section != null) {
+            return section.getBlockState(x & 15, y & 15, z & 15);
         }
+
+        return DEFAULT_STATE;
+    }
+
+    private ChunkSection[] getAndCacheChunkSections(int x, int z) {
+        final Chunk chunk = (Chunk) this.chunkProvider.getChunk(x, z);
+        final ChunkSection[] sections = chunk != null ? chunk.getSectionArray() : EMPTY_SECTION_ARRAY;
 
         final ChunkSection[][] cachedSections = this.cachedChunkSections;
         cachedSections[1] = cachedSections[0];
@@ -125,9 +113,9 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
         final long[] cachedCoords = this.cachedChunkPos;
         cachedCoords[1] = cachedCoords[0];
-        cachedCoords[0] = chunkPos;
+        cachedCoords[0] = ChunkPos.toLong(x, z);
 
-        return blockState;
+        return sections;
     }
 
     // [VanillaCopy] method_20479
