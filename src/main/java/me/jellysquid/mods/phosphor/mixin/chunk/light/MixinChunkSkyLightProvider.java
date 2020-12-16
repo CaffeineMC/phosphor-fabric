@@ -19,14 +19,7 @@ import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.ChunkSkyLightProvider;
 import net.minecraft.world.chunk.light.SkyLightStorage;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
-
-import static net.minecraft.util.math.ChunkSectionPos.getLocalCoord;
-import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
+import org.spongepowered.asm.mixin.*;
 
 @Mixin(ChunkSkyLightProvider.class)
 public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyLightStorage.Data, SkyLightStorage>
@@ -155,84 +148,92 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
     @Override
     @Overwrite
     public void propagateLevel(long id, int targetLevel, boolean mergeAsMin) {
-        long chunkId = ChunkSectionPos.fromBlockPos(id);
-
         int x = BlockPos.unpackLongX(id);
         int y = BlockPos.unpackLongY(id);
         int z = BlockPos.unpackLongZ(id);
 
-        int localX = getLocalCoord(x);
-        int localY = getLocalCoord(y);
-        int localZ = getLocalCoord(z);
-
         BlockState fromState = this.getBlockStateForLighting(x, y, z);
 
-        // Fast-path: Use much simpler logic if we do not need to access adjacent chunks
-        if (localX > 0 && localX < 15 && localY > 0 && localY < 15 && localZ > 0 && localZ < 15) {
-            for (Direction dir : DIRECTIONS) {
-                this.propagateLevel(id, fromState, BlockPos.asLong(x + dir.getOffsetX(), y + dir.getOffsetY(), z + dir.getOffsetZ()), targetLevel, mergeAsMin);
-            }
+        int localX = ChunkSectionPos.getLocalCoord(x);
+        int localY = ChunkSectionPos.getLocalCoord(y);
+        int localZ = ChunkSectionPos.getLocalCoord(z);
 
-            return;
+        int chunkY = ChunkSectionPos.getSectionCoord(y);
+
+        // Top Face
+        if (localY != 15 || this.lightStorage.hasSection(ChunkSectionPos.asLong(ChunkSectionPos.getSectionCoord(x), chunkY + 1, ChunkSectionPos.getSectionCoord(z)))) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y + 1, z), targetLevel, mergeAsMin);
         }
 
-        int chunkY = getSectionCoord(y);
-        int chunkOffsetY = 0;
+        int minChunkY = chunkY;
 
-        // Skylight optimization: Try to find bottom-most non-empty chunk
-        if (localY == 0) {
-            while (!this.lightStorage.hasSection(ChunkSectionPos.offset(chunkId, 0, -chunkOffsetY - 1, 0))
-                    && this.lightStorage.isAboveMinHeight(chunkY - chunkOffsetY - 1)) {
-                ++chunkOffsetY;
-            }
+        // Bottom Face
+        if (localY != 0) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y - 1, z), targetLevel, mergeAsMin);
+        } else {
+            long chunkId = ChunkSectionPos.asLong(ChunkSectionPos.getSectionCoord(x), chunkY, ChunkSectionPos.getSectionCoord(z));
+
+            // Skylight optimization: Try to find bottom-most non-empty chunk
+            do {
+                minChunkY--;
+            } while (this.lightStorage.isAboveMinHeight(minChunkY) && !this.lightStorage.hasSection(ChunkSectionPosHelper.updateYLong(chunkId, minChunkY)));
+
+            this.propagateLevel(BlockPos.asLong(x, (minChunkY << 4) + 16, z), AIR_BLOCK, BlockPos.asLong(x, (minChunkY << 4) + 15, z), targetLevel, mergeAsMin);
         }
 
-        int belowY = y + (-1 - chunkOffsetY * 16);
-        int belowChunkY = getSectionCoord(belowY);
-
-        if (chunkY == belowChunkY || this.lightStorage.hasSection(ChunkSectionPosHelper.updateYLong(chunkId, belowChunkY))) {
-            // MC-196542: Pass adjacent source position
-            BlockState state = chunkY == belowChunkY ? fromState : AIR_BLOCK;
-            this.propagateLevel(BlockPos.asLong(x, belowY + 1, z), state, BlockPos.asLong(x, belowY, z), targetLevel, mergeAsMin);
+        // West Face
+        if (localX != 0) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x - 1, y, z), targetLevel, mergeAsMin);
+        } else {
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, -1, 0);
         }
 
-        int aboveY = y + 1;
-        int aboveChunkY = getSectionCoord(aboveY);
-
-        if (chunkY == aboveChunkY || this.lightStorage.hasSection(ChunkSectionPosHelper.updateYLong(chunkId, aboveChunkY))) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x, aboveY, z), targetLevel, mergeAsMin);
+        // East Face
+        if (localX != 15) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x + 1, y,  z), targetLevel, mergeAsMin);
+        } else {
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, 1, 0);
         }
 
-        for (Direction dir : HORIZONTAL_DIRECTIONS) {
-            int adjX = x + dir.getOffsetX();
-            int adjZ = z + dir.getOffsetZ();
+        // North Face
+        if (localZ != 0) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y, z - 1), targetLevel, mergeAsMin);
+        } else {
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, 0, -1);
+        }
 
-            long offsetId = BlockPos.asLong(adjX, y, adjZ);
-            long offsetChunkId = ChunkSectionPos.fromBlockPos(offsetId);
+        // South Face
+        if (localZ != 15) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y, z + 1), targetLevel, mergeAsMin);
+        } else {
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, 0, 1);
+        }
+    }
 
-            boolean isWithinOriginChunk = chunkId == offsetChunkId;
+    private void propagateNeighborHorizontal(long id, BlockState fromState, int targetLevel, boolean mergeAsMin, int chunkY, int minChunkY, int x, int y, int z, int dirX, int dirZ) {
+        int adjX = x + dirX;
+        int adjZ = z + dirZ;
 
-            if (isWithinOriginChunk || this.lightStorage.hasSection(offsetChunkId)) {
-                this.propagateLevel(id, fromState, offsetId, targetLevel, mergeAsMin);
-            }
+        long offsetChunkId = ChunkSectionPos.asLong(ChunkSectionPos.getSectionCoord(adjX), chunkY, ChunkSectionPos.getSectionCoord(adjZ));
 
-            if (isWithinOriginChunk) {
+        if (this.lightStorage.hasSection(offsetChunkId)) {
+            this.propagateLevel(id, fromState, BlockPos.asLong(adjX, y, adjZ), targetLevel, mergeAsMin);
+        }
+
+        // MC-196542: First iterate over sections to reduce map lookups
+        for (int offsetChunkY = chunkY - 1; offsetChunkY > minChunkY; offsetChunkY--) {
+            if (!this.lightStorage.hasSection(ChunkSectionPosHelper.updateYLong(offsetChunkId, offsetChunkY))) {
                 continue;
             }
 
-            // MC-196542: First iterate over sections to reduce map lookups
-            for (int offsetChunkY = chunkY - 1; offsetChunkY > belowChunkY; --offsetChunkY) {
-                if (!this.lightStorage.hasSection(ChunkSectionPosHelper.updateYLong(offsetChunkId, offsetChunkY))) {
-                    continue;
-                }
+            int offsetChunkYBase = ChunkSectionPos.getBlockCoord(offsetChunkY);
 
-                for (int offsetY = 15; offsetY >= 0; --offsetY) {
-                    int adjY = ChunkSectionPos.getBlockCoord(offsetChunkY) + offsetY;
-                    offsetId = BlockPos.asLong(adjX, adjY, adjZ);
+            for (int adjY = offsetChunkYBase + 15; adjY >= offsetChunkYBase; adjY--) {
+                long srcId = BlockPos.asLong(x, adjY, z);
+                long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
 
-                    // MC-196542: Pass adjacent source position
-                    this.propagateLevel(BlockPos.asLong(x, adjY, z), AIR_BLOCK, offsetId, targetLevel, mergeAsMin);
-                }
+                // MC-196542: Pass adjacent source position
+                this.propagateLevel(srcId, AIR_BLOCK, offsetId, targetLevel, mergeAsMin);
             }
         }
     }
