@@ -43,7 +43,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
     @Override
     @Overwrite
     public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
-        return this.getPropagatedLevel(fromId, null, toId, currentLevel);
+        return this.getPropagatedLevel(fromId, null, toId, currentLevel, null);
     }
 
     /**
@@ -62,7 +62,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
      * @author JellySquid
      */
     @Override
-    public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel) {
+    public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel, Direction dir) {
         if (toId == Long.MAX_VALUE) {
             return 15;
         } else if (fromId == Long.MAX_VALUE && ((BlockLightStorageAccess) this.lightStorage).isLightEnabled(ChunkSectionPos.fromBlockPos(toId))) {
@@ -80,7 +80,9 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
         int fromY = BlockPos.unpackLongY(fromId);
         int fromZ = BlockPos.unpackLongZ(fromId);
 
-        Direction dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
+        if (dir == null) {
+            dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
+        }
 
         if (dir != null) {
             BlockState toState = this.getBlockStateForLighting(toX, toY, toZ);
@@ -134,7 +136,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
             long adjChunk = ChunkSectionPos.asLong(getSectionCoord(adjX), getSectionCoord(adjY), getSectionCoord(adjZ));
 
             if ((chunk == adjChunk) || this.lightStorage.hasSection(adjChunk)) {
-                this.propagateLevel(id, state, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
+                this.propagateLevel(id, state, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin, dir);
             }
         }
     }

@@ -45,7 +45,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
     @Override
     @Overwrite
     public int getPropagatedLevel(long fromId, long toId, int currentLevel) {
-        return this.getPropagatedLevel(fromId, null, toId, currentLevel);
+        return this.getPropagatedLevel(fromId, null, toId, currentLevel, null);
     }
 
     /**
@@ -67,7 +67,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * @param fromState The re-usable block state at position {@param fromId}
      */
     @Override
-    public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel) {
+    public int getPropagatedLevel(long fromId, BlockState fromState, long toId, int currentLevel, Direction dir) {
         if (toId == Long.MAX_VALUE) {
             return 15;
         } else if (fromId == Long.MAX_VALUE) {
@@ -94,20 +94,18 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             fromState = this.getBlockStateForLighting(fromX, fromY, fromZ);
         }
 
-        // Most light updates will happen between two empty air blocks, so use this to assume some properties
-        boolean airPropagation = toState == AIR_BLOCK && fromState == AIR_BLOCK;
-        boolean verticalOnly = fromX == toX && fromZ == toZ;
-
-        // The direction the light update is propagating
-        Direction dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
-
         if (dir == null) {
-            return 15; // MC-196542: The provided positions should always be adjacent
+            // Calculate the direction the light update is propagating since it wasn't passed to us
+            dir = DirectionHelper.getVecDirection(toX - fromX, toY - fromY, toZ - fromZ);
+
+            if (dir == null) {
+                return 15; // MC-196542: The provided positions should always be adjacent
+            }
         }
 
         // Shape comparison checks are only meaningful if the blocks involved have non-empty shapes
         // If we're comparing between air blocks, this is meaningless
-        if (!airPropagation) {
+        if (toState != AIR_BLOCK || fromState != AIR_BLOCK) {
             VoxelShape toShape = this.getOpaqueShape(toState, toX, toY, toZ, dir.getOpposite());
 
             if (toShape != VoxelShapes.fullCube()) {
@@ -122,7 +120,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
         int out = this.getSubtractedLight(toState, toX, toY, toZ);
 
         // MC-196542: No special handling for source-skylight
-        if (out == 0 && currentLevel == 0 && verticalOnly && fromY > toY) {
+        if (out == 0 && currentLevel == 0 && fromX == toX && fromZ == toZ && fromY > toY) {
             return 0;
         }
 
@@ -139,7 +137,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
      * which follows to simply re-use it instead of redundantly retrieving another block state.
      *
      * Additionally this implements the cleanups discussed in MC-196542. In particular:
-     * - This always passes adjacent positions to {@link LevelPropagatorExtended#propagateLevel(long, BlockState, long, int, boolean)}
+     * - This always passes adjacent positions to {@link LevelPropagatorExtended#propagateLevel(long, BlockState, long, int, boolean, Direction)}
      * - This reduces map lookups in the skylight optimization code
      *
      * @reason Use faster implementation
@@ -162,14 +160,14 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
 
         // Top Face
         if (localY != 15 || this.lightStorage.hasSection(ChunkSectionPos.asLong(ChunkSectionPos.getSectionCoord(x), chunkY + 1, ChunkSectionPos.getSectionCoord(z)))) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x, y + 1, z), targetLevel, mergeAsMin);
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y + 1, z), targetLevel, mergeAsMin, Direction.UP);
         }
 
         int minChunkY = chunkY;
 
         // Bottom Face
         if (localY != 0) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x, y - 1, z), targetLevel, mergeAsMin);
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y - 1, z), targetLevel, mergeAsMin, Direction.DOWN);
         } else {
             long chunkId = ChunkSectionPos.asLong(ChunkSectionPos.getSectionCoord(x), chunkY, ChunkSectionPos.getSectionCoord(z));
 
@@ -178,46 +176,46 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
                 minChunkY--;
             } while (this.lightStorage.isAboveMinHeight(minChunkY) && !this.lightStorage.hasSection(ChunkSectionPosHelper.updateYLong(chunkId, minChunkY)));
 
-            this.propagateLevel(BlockPos.asLong(x, (minChunkY << 4) + 16, z), AIR_BLOCK, BlockPos.asLong(x, (minChunkY << 4) + 15, z), targetLevel, mergeAsMin);
+            this.propagateLevel(BlockPos.asLong(x, (minChunkY << 4) + 16, z), AIR_BLOCK, BlockPos.asLong(x, (minChunkY << 4) + 15, z), targetLevel, mergeAsMin, Direction.DOWN);
         }
 
         // West Face
         if (localX != 0) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x - 1, y, z), targetLevel, mergeAsMin);
+            this.propagateLevel(id, fromState, BlockPos.asLong(x - 1, y, z), targetLevel, mergeAsMin, Direction.WEST);
         } else {
-            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, -1, 0);
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, Direction.WEST);
         }
 
         // East Face
         if (localX != 15) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x + 1, y,  z), targetLevel, mergeAsMin);
+            this.propagateLevel(id, fromState, BlockPos.asLong(x + 1, y,  z), targetLevel, mergeAsMin, Direction.EAST);
         } else {
-            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, 1, 0);
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, Direction.EAST);
         }
 
         // North Face
         if (localZ != 0) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x, y, z - 1), targetLevel, mergeAsMin);
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y, z - 1), targetLevel, mergeAsMin, Direction.NORTH);
         } else {
-            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, 0, -1);
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, Direction.NORTH);
         }
 
         // South Face
         if (localZ != 15) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(x, y, z + 1), targetLevel, mergeAsMin);
+            this.propagateLevel(id, fromState, BlockPos.asLong(x, y, z + 1), targetLevel, mergeAsMin, Direction.SOUTH);
         } else {
-            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, 0, 1);
+            this.propagateNeighborHorizontal(id, fromState, targetLevel, mergeAsMin, chunkY, minChunkY, x, y, z, Direction.SOUTH);
         }
     }
 
-    private void propagateNeighborHorizontal(long id, BlockState fromState, int targetLevel, boolean mergeAsMin, int chunkY, int minChunkY, int x, int y, int z, int dirX, int dirZ) {
-        int adjX = x + dirX;
-        int adjZ = z + dirZ;
+    private void propagateNeighborHorizontal(long id, BlockState fromState, int targetLevel, boolean mergeAsMin, int chunkY, int minChunkY, int x, int y, int z, Direction dir) {
+        int adjX = x + dir.getOffsetX();
+        int adjZ = z + dir.getOffsetZ();
 
         long offsetChunkId = ChunkSectionPos.asLong(ChunkSectionPos.getSectionCoord(adjX), chunkY, ChunkSectionPos.getSectionCoord(adjZ));
 
         if (this.lightStorage.hasSection(offsetChunkId)) {
-            this.propagateLevel(id, fromState, BlockPos.asLong(adjX, y, adjZ), targetLevel, mergeAsMin);
+            this.propagateLevel(id, fromState, BlockPos.asLong(adjX, y, adjZ), targetLevel, mergeAsMin, dir);
         }
 
         // MC-196542: First iterate over sections to reduce map lookups
@@ -233,7 +231,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
                 long offsetId = BlockPos.asLong(adjX, adjY, adjZ);
 
                 // MC-196542: Pass adjacent source position
-                this.propagateLevel(srcId, AIR_BLOCK, offsetId, targetLevel, mergeAsMin);
+                this.propagateLevel(srcId, AIR_BLOCK, offsetId, targetLevel, mergeAsMin, dir);
             }
         }
     }
@@ -272,6 +270,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             long adjChunkId = ChunkSectionPos.fromBlockPos(adjId);
 
             ChunkNibbleArray adjLightmap;
+
             if (chunkId == adjChunkId) {
                 adjLightmap = lightmap;
             } else {
@@ -288,7 +287,7 @@ public abstract class MixinChunkSkyLightProvider extends ChunkLightProvider<SkyL
             }
 
             // MC-196542: Pass adjacent source position
-            int propagatedLevel = this.getPropagatedLevel(adjId, id, adjLevel);
+            int propagatedLevel = this.getPropagatedLevel(adjId, null, id, adjLevel, direction.getOpposite());
 
             if (currentLevel > propagatedLevel) {
                 currentLevel = propagatedLevel;

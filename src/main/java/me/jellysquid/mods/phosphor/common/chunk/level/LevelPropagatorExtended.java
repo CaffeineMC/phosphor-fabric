@@ -1,6 +1,7 @@
 package me.jellysquid.mods.phosphor.common.chunk.level;
 
 import net.minecraft.block.BlockState;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.chunk.light.LevelPropagator;
 
 public interface LevelPropagatorExtended {
@@ -8,11 +9,11 @@ public interface LevelPropagatorExtended {
      * Mirrors {@link LevelPropagator#propagateLevel(long, int, boolean)}, but allows a block state to be passed to
      * prevent subsequent lookup later.
      */
-    void propagateLevel(long sourceId, BlockState sourceState, long targetId, int level, boolean decrease);
+    void propagateLevel(long sourceId, BlockState sourceState, long targetId, int level, boolean decrease, Direction dir);
 
     /**
      * Copy of {@link LevelPropagator#getPropagatedLevel(long, long, int)} but with an additional argument to pass the
-     * block state belonging to {@param sourceId}.
+     * block state belonging to {@param sourceId} and the direction (if applicable).
      */
-    int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level);
+    int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level, Direction dir);
 }

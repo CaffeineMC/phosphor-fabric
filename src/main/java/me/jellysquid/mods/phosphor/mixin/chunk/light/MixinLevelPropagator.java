@@ -4,6 +4,7 @@ import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
 import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
 import me.jellysquid.mods.phosphor.common.util.collections.LevelUpdateManager;
 import net.minecraft.block.BlockState;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.chunk.light.LevelPropagator;
 import org.spongepowered.asm.mixin.Final;
@@ -188,10 +189,10 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
 
     // [VanillaCopy] LevelPropagator#propagateLevel(long, long, int, boolean)
     @Override
-    public void propagateLevel(long sourceId, BlockState sourceState, long targetId, int level, boolean decrease) {
+    public void propagateLevel(long sourceId, BlockState sourceState, long targetId, int level, boolean decrease, Direction dir) {
         int pendingLevel = this.levelUpdateManager.getPendingUpdate(targetId);
 
-        int propagatedLevel = this.getPropagatedLevel(sourceId, sourceState, targetId, level);
+        int propagatedLevel = this.getPropagatedLevel(sourceId, sourceState, targetId, level, null);
         int clampedLevel = MathHelper.clamp(propagatedLevel, 0, this.maxLevel);
 
         if (decrease) {
@@ -258,7 +259,7 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
     }
 
     @Override
-    public int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level) {
+    public int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level, Direction dir) {
         return this.getPropagatedLevel(sourceId, targetId, level);
     }
 
