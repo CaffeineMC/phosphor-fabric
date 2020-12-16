@@ -1,10 +1,7 @@
 package me.jellysquid.mods.phosphor.common.util.collections;
 
 import it.unimi.dsi.fastutil.Hash;
-import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2IntMap;
-import it.unimi.dsi.fastutil.longs.Long2IntMaps;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.*;
 
 import java.util.concurrent.locks.StampedLock;
 
@@ -20,37 +17,32 @@ import java.util.concurrent.locks.StampedLock;
  * {@link Integer#MIN_VALUE} is used to indicate values which are to be removed and cannot be added to the queue.
  */
 public class DoubleBufferedLong2IntHashMap {
-    // The hash table of entries belonging to the owning thread
+    // The map of pending entry updates to be applied to the visible hash table
     private final Long2IntMap mapPending;
 
-    // The hash table of entries available to other threads
-    private final Long2IntMap mapVisible;
+    // The hash table of entries belonging to the owning thread
+    private Long2IntMap mapLocal;
 
-    // The map of pending entry updates to be applied to the visible hash table
-    private final Long2IntMap mapUpdates;
+    // The hash table of entries available to other threads
+    private Long2IntMap mapShared;
 
     // The lock used by other threads to grab values from the visible map asynchronously. This prevents other threads
     // from seeing partial updates while the changes are flushed. The lock implementation is specially selected to
     // optimize for the common case: infrequent writes, very frequent reads.
     private final StampedLock lock = new StampedLock();
 
-    // The pending return value as seen by the owning thread
-    private int queuedDefaultReturnValue;
-
     public DoubleBufferedLong2IntHashMap() {
         this(16, Hash.FAST_LOAD_FACTOR);
     }
 
     public DoubleBufferedLong2IntHashMap(int capacity, float loadFactor) {
+        this.mapLocal = new Long2IntOpenHashMap(capacity, loadFactor);
+        this.mapShared = new Long2IntOpenHashMap(capacity, loadFactor);
         this.mapPending = new Long2IntOpenHashMap(capacity, loadFactor);
-        this.mapVisible = new Long2IntOpenHashMap(capacity, loadFactor);
-        this.mapUpdates = new Long2IntOpenHashMap(capacity, loadFactor);
     }
 
     public void defaultReturnValueSync(int v) {
-        this.queuedDefaultReturnValue = v;
-
-        this.mapPending.defaultReturnValue(v);
+        this.mapLocal.defaultReturnValue(v);
     }
 
     public int putSync(long k, int v) {
@@ -58,77 +50,80 @@ public class DoubleBufferedLong2IntHashMap {
             throw new IllegalArgumentException("Value Integer.MIN_VALUE cannot be used");
         }
 
-        this.mapUpdates.put(k, v);
+        this.mapPending.put(k, v);
 
-        return this.mapPending.put(k, v);
+        return this.mapLocal.put(k, v);
     }
 
     public int removeSync(long k) {
-        this.mapUpdates.put(k, Integer.MIN_VALUE);
+        this.mapPending.put(k, Integer.MIN_VALUE);
 
-        return this.mapPending.remove(k);
+        return this.mapLocal.remove(k);
     }
 
     public int getSync(long k) {
-        return this.mapPending.get(k);
+        return this.mapLocal.get(k);
     }
 
     public int getAsync(long k) {
-        while (true) {
-            final long stamp = this.lock.tryOptimisticRead();
+        long stamp;
+        int ret;
 
-            // Long2IntOpenHashMap is not thread-safe and may throw ArrayIndexOutOfBoundsException when queried in an inconsistent state
-            try {
-                final int ret = this.mapVisible.get(k);
+        do {
+            stamp = this.lock.tryOptimisticRead();
+            ret = this.mapShared.get(k);
+        } while (!this.lock.validate(stamp));
 
-                if (this.lock.validate(stamp)) {
-                    return ret;
-                }
-            } catch (ArrayIndexOutOfBoundsException e) {
-            }
-        }
+        return ret;
     }
 
     /**
      * Flushes all pending changes to the visible hash table seen by outside consumers.
      */
     public void flushChangesSync() {
-        // The return value above has to be updated before we try to early-exit
-        final long writeLock = this.lock.writeLock();
-
-        try {
-            // First, update the return value of the collection
-            this.mapVisible.defaultReturnValue(this.queuedDefaultReturnValue);
-
-            // Perform the early-exit check now
-            if (this.mapUpdates.isEmpty()) {
-                return;
-            }
-
-            // Use a non-allocating iterator if possible, otherwise we're going to hurt
-            for (Long2IntMap.Entry entry : Long2IntMaps.fastIterable(this.mapUpdates)) {
-                final long key = entry.getLongKey();
-                final int val = entry.getIntValue();
-
-                // MIN_VALUE indicates that the value should be removed instead
-                if (val == Integer.MIN_VALUE) {
-                    this.mapVisible.remove(key);
-                } else {
-                    this.mapVisible.put(key, val);
-                }
-            }
-        } finally {
-            this.lock.unlockWrite(writeLock);
+        // Early-exit if there's no work to do
+        if (this.mapPending.isEmpty()) {
+            return;
         }
 
-        this.mapUpdates.clear();
+        // Swap the local and shared tables immediately, and then block the writer thread while we finish copying
+        this.swapTables();
+
+        // Use a non-allocating iterator if possible, otherwise we're going to hurt
+        for (Long2IntMap.Entry entry : Long2IntMaps.fastIterable(this.mapPending)) {
+            final long key = entry.getLongKey();
+            final int val = entry.getIntValue();
+
+            // MIN_VALUE indicates that the value should be removed instead
+            if (val == Integer.MIN_VALUE) {
+                this.mapLocal.remove(key);
+            } else {
+                this.mapLocal.put(key, val);
+            }
+        }
+
+        this.mapLocal.defaultReturnValue(this.mapShared.defaultReturnValue());
+
+        this.mapPending.clear();
+    }
+
+    private void swapTables() {
+        final long writeLock =  this.lock.writeLock();
+
+        Long2IntMap mapShared = this.mapLocal;
+        Long2IntMap mapLocal = this.mapShared;
+
+        this.mapShared = mapShared;
+        this.mapLocal = mapLocal;
+
+        this.lock.unlockWrite(writeLock);
     }
 
     public Long2IntOpenHashMap createSyncView() {
         return new Long2IntOpenHashMap() {
             @Override
             public int size() {
-                return DoubleBufferedLong2IntHashMap.this.mapPending.size();
+                return DoubleBufferedLong2IntHashMap.this.mapLocal.size();
             }
 
             @Override
@@ -138,17 +133,17 @@ public class DoubleBufferedLong2IntHashMap {
 
             @Override
             public int defaultReturnValue() {
-                return DoubleBufferedLong2IntHashMap.this.mapPending.defaultReturnValue();
+                return DoubleBufferedLong2IntHashMap.this.mapLocal.defaultReturnValue();
             }
 
             @Override
             public boolean containsKey(long key) {
-                return DoubleBufferedLong2IntHashMap.this.mapPending.containsKey(key);
+                return DoubleBufferedLong2IntHashMap.this.mapLocal.containsKey(key);
             }
 
             @Override
             public boolean containsValue(int value) {
-                return DoubleBufferedLong2IntHashMap.this.mapPending.containsValue(value);
+                return DoubleBufferedLong2IntHashMap.this.mapLocal.containsValue(value);
             }
 
             @Override
@@ -168,7 +163,7 @@ public class DoubleBufferedLong2IntHashMap {
 
             @Override
             public boolean isEmpty() {
-                return DoubleBufferedLong2IntHashMap.this.mapPending.isEmpty();
+                return DoubleBufferedLong2IntHashMap.this.mapLocal.isEmpty();
             }
         };
     }
