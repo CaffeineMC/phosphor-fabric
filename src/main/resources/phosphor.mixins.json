@@ -20,7 +20,6 @@
         "chunk.light.MixinSkyLightStorageData",
         "chunk.light.MixinServerLightingProvider",
         "chunk.MixinProtoChunk",
-        "world.MixinWorld",
         "world.MixinThreadedAnvilChunkStorage",
         "chunk.MixinChunkStatus",
         "world.MixinChunkSerializer"

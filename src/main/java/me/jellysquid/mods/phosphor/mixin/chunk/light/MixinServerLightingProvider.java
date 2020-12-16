@@ -25,37 +25,6 @@ public abstract class MixinServerLightingProvider extends MixinLightingProvider 
     @Shadow
     protected abstract void enqueue(int x, int z, ServerLightingProvider.Stage stage, Runnable task);
 
-    /**
-     * @author PhiPro
-     * @reason Re-implement
-     */
-    @Overwrite
-    public void setSectionStatus(final ChunkSectionPos pos, final boolean empty)
-    {
-        if (empty) {
-            // Schedule after light updates have been carried out
-            this.enqueue(pos.getSectionX(), pos.getSectionZ(), ServerLightingProvider.Stage.POST_UPDATE, Util.debugRunnable(() -> {
-                super.setSectionStatus(pos, true);
-            },
-                () -> "updateSectionStatus " + pos + " " + true
-            ));
-        } else {
-            // Schedule before light updates are carried out
-            this.enqueue(pos.getSectionX(), pos.getSectionZ(), () -> 0, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
-                super.setSectionStatus(pos, false);
-            },
-                () -> "updateSectionStatus " + pos + " " + false
-            ));
-
-            // Schedule another version in POST_UPDATE to achieve reliable final state
-            this.enqueue(pos.getSectionX(), pos.getSectionZ(), ServerLightingProvider.Stage.POST_UPDATE, Util.debugRunnable(() -> {
-                super.setSectionStatus(pos, false);
-            },
-                () -> "updateSectionStatus " + pos + " " + false
-            ));
-        }
-    }
-
     @Override
     public CompletableFuture<Chunk> setupLightmaps(final Chunk chunk) {
         final ChunkPos chunkPos = chunk.getPos();

@@ -70,14 +70,4 @@ public abstract class MixinWorldChunk {
 
         return list.stream();
     }
-
-    @Redirect(
-        method = "setBlockState(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/BlockState;Z)Lnet/minecraft/block/BlockState;",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/world/chunk/light/LightingProvider;setSectionStatus(Lnet/minecraft/util/math/BlockPos;Z)V"
-        )
-    )
-    private void disablelLightmapHandling(final LightingProvider lightingProvider, final BlockPos pos, final boolean status) {
-    }
 }
