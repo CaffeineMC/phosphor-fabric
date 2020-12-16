@@ -55,7 +55,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
     private final Long2ObjectOpenHashMap<BitSet> buckets = new Long2ObjectOpenHashMap<>();
 
-    private long prevChunkBucketKey = Long.MIN_VALUE;
+    private long prevChunkBucketKey = ChunkPos.MARKER;
     private BitSet prevChunkBucketSet;
 
     protected MixinChunkLightProvider(int levelCount, int expectedLevelSize, int expectedTotalSize) {
@@ -66,7 +66,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     private void onCleanup(CallbackInfo ci) {
         // This callback may be executed from the constructor above, and the object won't be initialized then
         if (this.cachedChunkPos != null) {
-            Arrays.fill(this.cachedChunkPos, Long.MIN_VALUE);
+            Arrays.fill(this.cachedChunkPos, ChunkPos.MARKER);
             Arrays.fill(this.cachedChunkSections, null);
         }
     }
@@ -256,7 +256,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         BitSet set = this.buckets.remove(key);
 
         if (this.prevChunkBucketSet == set) {
-            this.prevChunkBucketKey = Long.MIN_VALUE;
+            this.prevChunkBucketKey = ChunkPos.MARKER;
             this.prevChunkBucketSet = null;
         }
 
