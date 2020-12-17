@@ -477,18 +477,20 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
         if (oldComplexity == 0) {
             this.trivialLightmaps.remove(sectionPos);
-            this.checkForLightUpdates();
         }
 
         if (complexity == 0) {
             this.trivialLightmaps.add(sectionPos);
-            this.checkForLightUpdates();
+            this.markForLightUpdates();
         }
     }
 
     @Unique
-    private void checkForLightUpdates() {
-        this.hasLightUpdates = !this.markedEnabledChunks.isEmpty() || !this.markedDisabledChunks.isEmpty() || !this.trivialLightmaps.isEmpty() || !this.queuedSections.isEmpty();
+    private void markForLightUpdates() {
+        // Avoid volatile writes
+        if (!this.hasLightUpdates) {
+            this.hasLightUpdates = true;
+        }
     }
 
     @Unique
@@ -497,7 +499,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
         if (complexity == 0) {
             this.trivialLightmaps.remove(sectionPos);
-            this.checkForLightUpdates();
         }
 
         complexity += amount;
@@ -505,7 +506,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
         if (complexity == 0) {
             this.trivialLightmaps.add(sectionPos);
-            this.checkForLightUpdates();
+            this.markForLightUpdates();
         }
     }
 
@@ -571,7 +572,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
             }
 
             this.markedEnabledChunks.add(chunkPos);
-            this.checkForLightUpdates();
+            this.markForLightUpdates();
         } else {
             if (this.markedEnabledChunks.remove(chunkPos) || !this.enabledChunks.contains(chunkPos)) {
                 for (int i = -1; i < 17; ++i) {
@@ -585,7 +586,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
                 this.setColumnEnabled(chunkPos, false);
             } else {
                 this.markedDisabledChunks.add(chunkPos);
-                this.checkForLightUpdates();
+                this.markForLightUpdates();
             }
         }
     }
@@ -826,7 +827,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         if (array != null) {
             if (chunkEnabled) {
                 this.queuedSections.put(sectionPos, array);
-                this.checkForLightUpdates();
+                this.markForLightUpdates();
             } else {
                 this.storage.put(sectionPos, array);
                 this.dirtySections.add(sectionPos);
@@ -838,7 +839,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         } else {
             if (chunkEnabled) {
                 this.queuedSections.remove(sectionPos);
-                this.checkForLightUpdates();
             } else {
                 this.storage.removeChunk(sectionPos);
                 this.dirtySections.add(sectionPos);
