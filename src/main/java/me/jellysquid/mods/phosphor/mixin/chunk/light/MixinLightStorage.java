@@ -826,6 +826,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         if (array != null) {
             if (chunkEnabled) {
                 this.queuedSections.put(sectionPos, array);
+                this.checkForLightUpdates();
             } else {
                 this.storage.put(sectionPos, array);
                 this.dirtySections.add(sectionPos);
@@ -837,6 +838,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         } else {
             if (chunkEnabled) {
                 this.queuedSections.remove(sectionPos);
+                this.checkForLightUpdates();
             } else {
                 this.storage.removeChunk(sectionPos);
                 this.dirtySections.add(sectionPos);
