@@ -23,7 +23,3 @@ jobs:
         with:
             files: 'build/libs/*;LICENSE'
             repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload assets to CurseForge
-        run: ./gradlew curseforge
-        env:
-            CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
