@@ -602,7 +602,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         final long sectionPosBelow = this.getSectionBelow(sectionPos);
 
         if (sectionPosBelow != Long.MAX_VALUE) {
-            final ChunkNibbleArray lightmapBelow = this.getLightSection(sectionPosBelow, true);
+            final ChunkNibbleArray lightmapBelow = this.getLightmap(sectionPosBelow);
             final ChunkNibbleArray lightmapAbove = oldLightmap == null ? this.getLightmapAbove(sectionPos) : oldLightmap;
 
             final int skyLight = this.getDirectSkylight(sectionPos);
