@@ -240,10 +240,23 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
             return;
         }
 
+        this.lightChunks(lightProvider);
+        this.updateRemovedLightmaps();
+
+        this.hasUpdates = false;
+    }
+
+    @Unique
+    private void lightChunks(final ChunkLightProvider<SkyLightStorage.Data, ?> lightProvider) {
+        if (this.initSkylightChunks.isEmpty()) {
+            return;
+        }
+
+        final LevelPropagatorAccess levelPropagator = (LevelPropagatorAccess) lightProvider;
+
         for (final LongIterator it = this.initSkylightChunks.iterator(); it.hasNext(); ) {
             final long chunkPos = it.nextLong();
 
-            final LevelPropagatorAccess levelPropagator = (LevelPropagatorAccess) lightProvider;
             final int minY = this.fillSkylightColumn(lightProvider, chunkPos);
 
             this.enabledColumns.add(chunkPos);
@@ -297,43 +310,47 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
             }
         }
 
+        levelPropagator.checkForUpdates();
         this.initSkylightChunks.clear();
+    }
 
-        if (!this.removedLightmaps.isEmpty()) {
-            final LongSet removedLightmaps = new LongOpenHashSet(this.removedLightmaps);
-
-            for (final LongIterator it = removedLightmaps.iterator(); it.hasNext(); ) {
-                final long sectionPos = it.nextLong();
-
-                if (!this.enabledChunks.contains(ChunkSectionPos.withZeroY(sectionPos))) {
-                    continue;
-                }
-
-                if (!this.removedLightmaps.contains(sectionPos)) {
-                    continue;
-                }
-
-                final long sectionPosAbove = this.getSectionAbove(sectionPos);
-
-                if (sectionPosAbove == Long.MAX_VALUE) {
-                    this.updateVanillaLightmapsBelow(sectionPos, this.isSectionEnabled(sectionPos) ? DIRECT_SKYLIGHT_MAP : null, true);
-                } else {
-                    long removedLightmapPosAbove = sectionPos;
-
-                    for (long pos = sectionPos; pos != sectionPosAbove; pos = ChunkSectionPos.offset(pos, Direction.UP)) {
-                        if (this.removedLightmaps.remove(pos)) {
-                            removedLightmapPosAbove = pos;
-                        }
-                    }
-
-                    this.updateVanillaLightmapsBelow(removedLightmapPosAbove, this.vanillaLightmapComplexities.get(sectionPosAbove) == 0 ? null : this.getLightSection(sectionPosAbove, true), false);
-                }
-            }
-
-            this.removedLightmaps.clear();
+    @Unique
+    private void updateRemovedLightmaps() {
+        if (this.removedLightmaps.isEmpty()) {
+            return;
         }
 
-        this.hasUpdates = false;
+        final LongSet removedLightmaps = new LongOpenHashSet(this.removedLightmaps);
+
+        for (final LongIterator it = removedLightmaps.iterator(); it.hasNext(); ) {
+            final long sectionPos = it.nextLong();
+
+            if (!this.enabledChunks.contains(ChunkSectionPos.withZeroY(sectionPos))) {
+                continue;
+            }
+
+            if (!this.removedLightmaps.contains(sectionPos)) {
+                continue;
+            }
+
+            final long sectionPosAbove = this.getSectionAbove(sectionPos);
+
+            if (sectionPosAbove == Long.MAX_VALUE) {
+                this.updateVanillaLightmapsBelow(sectionPos, this.isSectionEnabled(sectionPos) ? DIRECT_SKYLIGHT_MAP : null, true);
+            } else {
+                long removedLightmapPosAbove = sectionPos;
+
+                for (long pos = sectionPos; pos != sectionPosAbove; pos = ChunkSectionPos.offset(pos, Direction.UP)) {
+                    if (this.removedLightmaps.remove(pos)) {
+                        removedLightmapPosAbove = pos;
+                    }
+                }
+
+                this.updateVanillaLightmapsBelow(removedLightmapPosAbove, this.vanillaLightmapComplexities.get(sectionPosAbove) == 0 ? null : this.getLightSection(sectionPosAbove, true), false);
+            }
+        }
+
+        this.removedLightmaps.clear();
     }
 
     /**
