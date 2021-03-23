@@ -28,7 +28,7 @@
     "fabricloader": ">=0.8.0",
     "minecraft": ">=1.16.2"
   },
-  "conflicts": {
+  "breaks": {
     "starlight": "*"
   }
 }
