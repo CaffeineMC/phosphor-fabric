@@ -3,7 +3,7 @@
   "id": "phosphor",
   "version": "${version}",
   "name": "Phosphor",
-  "description": "Phosphor is an optimization mod for Minecraft which improves the performance of the lighting engine, resulting in significantly reduced world generation times and improved server tick rates. You can help feed me and support development on Patreon, gaining some special perks in the process! Any amount of support helps a ton. https://www.patreon.com/jellysquid",
+  "description": "Phosphor is a free and open-source optimization mod for Minecraft which improves the performance of the lighting engine, resulting in significantly reduced world generation times and improved server tick rates. You can help feed me and support development on Patreon, gaining some special perks in the process! Any amount of support helps a ton. https://www.patreon.com/jellysquid",
   "authors": [
     "JellySquid",
     "PhiPro"
