@@ -17,10 +17,10 @@ with many Minecraft mods (so long as they do not make drastic changes to how the
 
 #### Manual Installation (recommended)
 
-The latest releases of Sodium are published to our [official Modrinth page](https://modrinth.com/mod/phosphor) and [GitHub releases page](https://github.com/jellysquid3/phosphor-fabric/releases). Usually, builds will be
+The latest releases of Phosphor are published to our [official Modrinth page](https://modrinth.com/mod/phosphor) and [GitHub releases page](https://github.com/jellysquid3/phosphor-fabric/releases). Usually, builds will be
 made available on GitHub slightly sooner than other locations.
 
-You will need Fabric Loader 0.10.x or newer installed in your game in order to load Sodium. If you haven't installed Fabric
+You will need Fabric Loader 0.10.x or newer installed in your game in order to load Phosphor. If you haven't installed Fabric
 mods before, you can find a variety of community guides for doing so [here](https://fabricmc.net/wiki/install).
 
 #### CurseForge
@@ -76,7 +76,7 @@ customize this behavior on a system-wide level, please see [Gradle's Toolchain u
 
 #### Building with Gradle
 
-Sodium uses a typical Gradle project structure and can be built by simply running the default `build` task.
+Phosphor uses a typical Gradle project structure and can be built by simply running the default `build` task.
 
 **Tip:** If this is a one-off build, and you would prefer the Gradle daemon does not stick around in memory afterwards 
 (often consuming upwards of 1 GiB), then you can use the [`--no-daemon` argument](https://docs.gradle.org/current/userguide/gradle_daemon.html#sec:disabling_the_daemon)
