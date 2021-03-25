@@ -120,6 +120,8 @@ before they are remapped into stable intermediary names. If you are working in a
 like to add the mod to your game, you should prefer to use the `modRuntime` or `modCompile` configurations provided by
 Loom instead of these outputs.
 
+---
+
 ### License
 
 Phosphor is licensed under GNU LGPLv3, a free and open-source license. For more information, please see the [license file](https://github.com/CaffeineMC/phosphor-fabric/blob/1.16.x/dev/LICENSE.txt).
