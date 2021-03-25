@@ -1,9 +1,9 @@
 ![Project icon](https://git-assets.jellysquid.me/hotlink-ok/phosphor/icon-rounded-128px.png)
 
 # Phosphor (for Fabric)
-![GitHub license](https://img.shields.io/github/license/jellysquid3/phosphor-fabric.svg)
-![GitHub issues](https://img.shields.io/github/issues/jellysquid3/phosphor-fabric.svg)
-![GitHub tag](https://img.shields.io/github/tag/jellysquid3/phosphor-fabric.svg)
+![GitHub license](https://img.shields.io/github/license/CaffeineMC/phosphor-fabric.svg)
+![GitHub issues](https://img.shields.io/github/issues/CaffeineMC/phosphor-fabric.svg)
+![GitHub tag](https://img.shields.io/github/tag/CaffeineMC/phosphor-fabric.svg)
 
 Phosphor is a free and open-source Minecraft mod (under GNU GPLv3) aiming to save your CPU cycles and improve performance by optimizing one of Minecraft's most inefficient areas-- the lighting engine.
 It works on **both the client and server**, and can be installed on servers **without requiring clients to also have the mod**.
@@ -122,4 +122,4 @@ Loom instead of these outputs.
 
 ### License
 
-Phosphor is licensed under GNU LGPLv3, a free and open-source license. For more information, please see the [license file](https://github.com/jellysquid3/phosphor-fabric/blob/1.16.x/dev/LICENSE.txt).
+Phosphor is licensed under GNU LGPLv3, a free and open-source license. For more information, please see the [license file](https://github.com/CaffeineMC/phosphor-fabric/blob/1.16.x/dev/LICENSE.txt).
