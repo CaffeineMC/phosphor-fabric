@@ -47,7 +47,7 @@ we will expect that this is the case. Caveat emptor.
 
 ### CurseForge
 
-[![CurseForge downloads](http://cf.way2muchnoise.eu/full_394468_downloads.svg)](https://www.curseforge.com/minecraft/mc-mods/phosphor)
+[![CurseForge downloads](http://cf.way2muchnoise.eu/full_372124_downloads.svg)](https://www.curseforge.com/minecraft/mc-mods/phosphor)
 
 If you are using the CurseForge client, you can continue to find downloads through our
 [CurseForge page](https://www.curseforge.com/minecraft/mc-mods/phosphor). Unless you are using the CurseForge
