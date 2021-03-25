@@ -3,7 +3,7 @@
 # Phosphor (for Fabric)
 ![GitHub license](https://img.shields.io/github/license/CaffeineMC/phosphor-fabric.svg)
 ![GitHub issues](https://img.shields.io/github/issues/CaffeineMC/phosphor-fabric.svg)
-![GitHub tag](https://img.shields.io/github/tag/CaffeineMC/phosphor-fabric.svg)
+![GitHub tag](https://img.shields.io/github/v/tag/CaffeineMC/phosphor-fabric.svg)
 
 Phosphor is a free and open-source Minecraft mod (under GNU GPLv3) aiming to save your CPU cycles and improve performance by optimizing one of Minecraft's most inefficient areas-- the lighting engine.
 It works on **both the client and server**, and can be installed on servers **without requiring clients to also have the mod**.
