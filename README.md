@@ -25,7 +25,7 @@ Fabric mods before, you can find a variety of community guides for doing so [her
 
 ![GitHub release](https://img.shields.io/github/release/CaffeineMC/phosphor-fabric.svg)
 
-The latest releases of Phosphor are published to our [Modrinth](https://modrinth.com/mods/phosphor) and
+The latest releases of Phosphor are published to our [Modrinth](https://modrinth.com/mod/phosphor) and
 [GitHub release](https://github.com/CaffeineMC/phosphor-fabric/releases) pages. Releases are considered by our team to be
 **suitable for general use**, but they are not guaranteed to be free of bugs and other issues.
 
