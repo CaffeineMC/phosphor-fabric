@@ -40,7 +40,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.concurrent.locks.StampedLock;
 
-@SuppressWarnings("OverwriteModifiers")
 @Mixin(LightStorage.class)
 public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> extends SectionDistanceLevelPropagator implements SharedLightStorageAccess<M>, LightStorageAccess {
     protected MixinLightStorage() {
@@ -78,11 +77,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     @Shadow
     @Final
     protected LongSet markedNotReadySections;
-
-    @Mutable
-    @Shadow
-    @Final
-    private LongSet sectionsToRemove;
 
     @Shadow
     protected abstract void onLoadSection(long blockPos);
@@ -272,10 +266,9 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         }
 
         this.initializeChunks();
-        this.removeChunks(chunkLightProvider);
+        this.addQueuedLightmaps(chunkLightProvider);
         this.removeTrivialLightmaps(chunkLightProvider);
         this.removeVanillaLightmaps(chunkLightProvider);
-        this.addQueuedLightmaps(chunkLightProvider);
 
         final LongIterator it;
 
@@ -430,8 +423,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     @Unique
     private final LongSet markedEnabledChunks = new LongOpenHashSet();
     @Unique
-    private final LongSet markedDisabledChunks = new LongOpenHashSet();
-    @Unique
     private final LongSet trivialLightmaps = new LongOpenHashSet();
     @Unique
     private final LongSet vanillaLightmapsToRemove = new LongOpenHashSet();
@@ -565,29 +556,10 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     public abstract void invokeSetColumnEnabled(final long chunkPos, final boolean enabled);
 
     @Override
-    public void setLightUpdatesEnabled(final long chunkPos, final boolean enabled) {
-        if (enabled) {
-            if (this.markedDisabledChunks.remove(chunkPos) || this.enabledChunks.contains(chunkPos)) {
-                return;
-            }
-
+    public void enableLightUpdates(final long chunkPos) {
+        if (!this.enabledChunks.contains(chunkPos)){
             this.markedEnabledChunks.add(chunkPos);
             this.markForLightUpdates();
-        } else {
-            if (this.markedEnabledChunks.remove(chunkPos) || !this.enabledChunks.contains(chunkPos)) {
-                for (int i = -1; i < 17; ++i) {
-                    final long sectionPos = ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), i, ChunkSectionPos.unpackZ(chunkPos));
-
-                    if (this.storage.removeChunk(sectionPos) != null) {
-                        this.dirtySections.add(sectionPos);
-                    }
-                }
-
-                this.setColumnEnabled(chunkPos, false);
-            } else {
-                this.markedDisabledChunks.add(chunkPos);
-                this.markForLightUpdates();
-            }
         }
     }
 
@@ -649,11 +621,19 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         return new EmptyChunkNibbleArray();
     }
 
-    @Unique
-    private void removeChunks(final ChunkLightProvider<?, ?> lightProvider) {
-        for (final LongIterator it = this.markedDisabledChunks.iterator(); it.hasNext(); ) {
-            final long chunkPos = it.nextLong();
+    @Override
+    public void disableChunkLight(final long chunkPos, final ChunkLightProvider<?, ?> lightProvider) {
+        if (this.markedEnabledChunks.remove(chunkPos) || !this.enabledChunks.contains(chunkPos)) {
+            for (int i = -1; i < 17; ++i) {
+                final long sectionPos = ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), i, ChunkSectionPos.unpackZ(chunkPos));
 
+                if (this.storage.removeChunk(sectionPos) != null) {
+                    this.dirtySections.add(sectionPos);
+                }
+            }
+
+            this.setColumnEnabled(chunkPos, false);
+        } else {
             // First need to remove all pending light updates before changing any light value
 
             for (int i = -1; i < 17; ++i) {
@@ -695,8 +675,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
             this.setColumnEnabled(chunkPos, false);
             this.afterChunkDisabled(chunkPos);
         }
-
-        this.markedDisabledChunks.clear();
     }
 
     /**

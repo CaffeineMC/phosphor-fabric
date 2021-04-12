@@ -1,6 +1,7 @@
 package me.jellysquid.mods.phosphor.common.chunk.light;
 
 import net.minecraft.world.chunk.ChunkNibbleArray;
+import net.minecraft.world.chunk.light.ChunkLightProvider;
 
 public interface LightStorageAccess {
     ChunkNibbleArray callGetLightSection(long sectionPos, boolean cached);
@@ -11,11 +12,12 @@ public interface LightStorageAccess {
      */
     int getLightWithoutLightmap(long blockPos);
 
+    void enableLightUpdates(long chunkPos);
+
     /**
-     * Enables or disables light updates for the provided <code>chunkPos</code>.
-     * Disabling light updates additionally disables source light and removes all data associated to the chunk.
+     * Disables light updates and source light for the provided <code>chunkPos</code> and additionally removes all light data associated to the chunk.
      */
-    void setLightUpdatesEnabled(long chunkPos, boolean enabled);
+    void disableChunkLight(long chunkPos, ChunkLightProvider<?, ?> lightProvider);
 
     void invokeSetColumnEnabled(long chunkPos, boolean enabled);
 }

@@ -279,8 +279,9 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     /**
      * @author PhiPro
      * @reason Re-implement completely. Change specification of the method.
-     * Now controls both source light and light updates. Disabling now additionally removes all data associated to the chunk.
+     * Now controls both source light and light updates. Disabling now additionally removes all light data associated to the chunk.
      */
+    @SuppressWarnings("ConstantConditions")
     @Overwrite
     public void setColumnEnabled(final ChunkPos pos, final boolean enabled) {
         final long chunkPos = ChunkSectionPos.withZeroY(ChunkSectionPos.asLong(pos.x, 0, pos.z));
@@ -288,9 +289,9 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
         if (enabled) {
             lightStorage.invokeSetColumnEnabled(chunkPos, true);
-            lightStorage.setLightUpdatesEnabled(chunkPos, true);
+            lightStorage.enableLightUpdates(chunkPos);
         } else {
-            lightStorage.setLightUpdatesEnabled(chunkPos, false);
+            lightStorage.disableChunkLight(chunkPos, (ChunkLightProvider<?, ?>) (Object) this);
         }
     }
 
@@ -301,6 +302,6 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
     @Override
     public void enableLightUpdates(final long chunkPos) {
-        ((LightStorageAccess) this.lightStorage).setLightUpdatesEnabled(chunkPos, true);
+        ((LightStorageAccess) this.lightStorage).enableLightUpdates(chunkPos);
     }
 }
