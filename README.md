@@ -124,4 +124,4 @@ Loom instead of these outputs.
 
 ### License
 
-Phosphor is licensed under GNU LGPLv3, a free and open-source license. For more information, please see the [license file](LICENSE).
+Phosphor is licensed under GNU LGPLv3, a free and open-source license. For more information, please see the [license file](LICENSE.txt).
