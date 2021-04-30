@@ -49,9 +49,9 @@ tasks.withType(JavaCompile) {
 task sourcesJar(type: Jar, dependsOn: classes) {
 	classifier = "sources"
 	from sourceSets.main.allSource
-    from "LICENSE"
+    from "LICENSE.txt"
 }
 
 jar {
-    from "LICENSE"
+    from "LICENSE.txt"
 }
