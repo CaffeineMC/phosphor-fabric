@@ -1,4 +1,4 @@
-<img src="https://github.com/CaffeineMC/phosphor-fabric/raw/1.16.x/dev/src/main/resources/assets/phosphor/icon.png" width="128">
+<img src="src/main/resources/assets/phosphor/icon.png" width="128">
 
 # Phosphor (for Fabric)
 ![GitHub license](https://img.shields.io/github/license/CaffeineMC/phosphor-fabric.svg)
@@ -94,7 +94,7 @@ projects. The basic overview is provided here for those familiar.
   - You will need JDK 8 in order to build Phosphor, which can be installed through a supported package manager such as
     [Chocolatey](https://chocolatey.org/) on Windows or [SDKMAN!](https://sdkman.io/) on other platforms. If you'd prefer to
     not use a package manager, you can always grab the installers or packages directly from [AdoptOpenJDK](https://adoptopenjdk.net/).
-  - Gradle 6.7 or newer (optional)
+- Gradle 6.7 or newer (optional)
   - The [Gradle wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html#sec:using_wrapper) is provided in
     this repository can be used instead of installing a suitable version of Gradle yourself. However, if you are building
     many projects, you may prefer to install it yourself through a suitable package manager as to save disk space and to
