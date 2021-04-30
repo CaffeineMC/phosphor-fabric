@@ -2,7 +2,7 @@
 
 When opening issues, please be sure to include the following information as applicable.
 
-- The exact version of the mod you are running, such as `0.1.0-fabric`, and the version of Fabric/Forge you are using.
+- The exact version of the mod you are running, such as `0.1.0-fabric`, and the version of Fabric you are using.
 - If your issue is a crash, attach the latest client or server log and the complete crash report as a file. You can
 attach these as a file (preferred) or host them on a service such as [GitHub Gist](https://gist.github.com/) or [Hastebin](https://hastebin.com/).
 - If your issue is a bug or otherwise unexpected behavior, explain what you expected to happen.
@@ -50,4 +50,4 @@ them in the config file. Mixins should always be self-contained and grouped into
 Additionally, if you're making changes for the sake of improving performance in either the vanilla game or the project
 itself, try to provide a detailed test-case and benchmark for them. It's understandable that micro-benchmarking is
 difficult in the context of Minecraft, but even naive figures taken from a profiler, timings graph, or a simple counter
-will be greatly appreciated and help track incremental improvements. 
+will be greatly appreciated and help track incremental improvements.
