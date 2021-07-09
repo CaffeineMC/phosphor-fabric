@@ -7,17 +7,17 @@ public class SkyLightChunkNibbleArray extends ReadonlyChunkNibbleArray {
         super(inheritedLightmap.asByteArray());
     }
 
-    @Override
-    protected int getIndex(final int x, final int y, final int z) {
-        return super.getIndex(x, 0, z);
-    }
+    // @Override // Commented out because this function seems to have changed, maybe implementing this optimization?
+    // protected int getIndex(final int x, final int y, final int z) {
+    //     return super.getIndex(x, 0, z);
+    // }
 
     @Override
     public byte[] asByteArray() {
         byte[] byteArray = new byte[2048];
 
         for(int i = 0; i < 16; ++i) {
-            System.arraycopy(this.byteArray, 0, byteArray, i * 128, 128);
+            System.arraycopy(this.bytes, 0, byteArray, i * 128, 128);
         }
 
         return byteArray;
