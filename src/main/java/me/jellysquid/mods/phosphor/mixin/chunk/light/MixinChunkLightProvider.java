@@ -74,7 +74,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     // [VanillaCopy] method_20479
     @Override
     public BlockState getBlockStateForLighting(int x, int y, int z) {
-        if (World.isHeightInvalid(y)) {
+        if (this.chunkProvider.getWorld().isOutOfHeightLimit(y)) {
             return DEFAULT_STATE;
         }
 
