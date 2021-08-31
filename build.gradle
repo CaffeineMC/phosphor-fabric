@@ -13,7 +13,7 @@ def build_id = System.getenv("GITHUB_RUN_NUMBER");
 if (build_id == null) {
     version = "${project.mod_version}-SNAPSHOT"
 } else {
-    version = "${project.mod_version}+build.${build_id}"
+    version = "${project.mod_version}"
 }
 
 minecraft {
