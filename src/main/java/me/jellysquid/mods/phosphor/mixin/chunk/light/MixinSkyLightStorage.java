@@ -316,41 +316,32 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
     @Unique
     private void updateRemovedLightmaps() {
-        if (this.removedLightmaps.isEmpty()) {
-            return;
-        }
-
-        final LongSet removedLightmaps = new LongOpenHashSet(this.removedLightmaps);
-
-        for (final LongIterator it = removedLightmaps.iterator(); it.hasNext(); ) {
-            final long sectionPos = it.nextLong();
+        while (!this.removedLightmaps.isEmpty()) {
+            final long sectionPos = this.removedLightmaps.iterator().nextLong();
 
             if (!this.enabledChunks.contains(ChunkSectionPos.withZeroY(sectionPos))) {
                 continue;
             }
 
-            if (!this.removedLightmaps.contains(sectionPos)) {
-                continue;
-            }
+            long removedLightmapPosAbove = sectionPos;
+            final ChunkNibbleArray lightmapAbove;
 
-            final long sectionPosAbove = this.getSectionAbove(sectionPos);
-
-            if (sectionPosAbove == Long.MAX_VALUE) {
-                this.updateVanillaLightmapsBelow(sectionPos, this.isSectionEnabled(sectionPos) ? DIRECT_SKYLIGHT_MAP : null, true);
+            if (this.isAtOrAboveTopmostSection(sectionPos)) {
+                lightmapAbove = this.isSectionEnabled(sectionPos) ? DIRECT_SKYLIGHT_MAP : null;
             } else {
-                long removedLightmapPosAbove = sectionPos;
-
-                for (long pos = sectionPos; pos != sectionPosAbove; pos = ChunkSectionPos.offset(pos, Direction.UP)) {
-                    if (this.removedLightmaps.remove(pos)) {
-                        removedLightmapPosAbove = pos;
+                long sectionPosAbove = sectionPos;
+                for (; !this.hasLightmap(sectionPosAbove); sectionPosAbove = ChunkSectionPos.offset(sectionPosAbove, Direction.UP)) {
+                    if (this.removedLightmaps.contains(sectionPosAbove)) {
+                        removedLightmapPosAbove = sectionPosAbove;
                     }
                 }
 
-                this.updateVanillaLightmapsBelow(removedLightmapPosAbove, this.vanillaLightmapComplexities.get(sectionPosAbove) == 0 ? null : this.getLightSection(sectionPosAbove, true), false);
+                lightmapAbove = this.vanillaLightmapComplexities.get(sectionPosAbove) == 0 ? null : this.getLightSection(sectionPosAbove, true);
             }
-        }
 
-        this.removedLightmaps.clear();
+            this.removedLightmaps.remove(removedLightmapPosAbove);
+            this.updateVanillaLightmapsBelow(removedLightmapPosAbove, lightmapAbove);
+        }
     }
 
     /**
@@ -535,7 +526,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         if (this.dirtySections.add(sectionPos)) {
             this.storage.replaceWithCopy(sectionPos);
-            this.updateVanillaLightmapsBelow(sectionPos, this.getLightSection(sectionPos, true), false);
+            this.updateVanillaLightmapsBelow(sectionPos, this.getLightSection(sectionPos, true));
         }
     }
 
@@ -782,7 +773,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         // Vanilla lightmaps need to be re-parented immediately as the old parent can now be modified without informing them
 
-        this.updateVanillaLightmapsBelow(sectionPos, complexity == 0 ? null : lightmap, false);
+        this.updateVanillaLightmapsBelow(sectionPos, complexity == 0 ? null : lightmap);
     }
 
     @Inject(
@@ -802,17 +793,11 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
     }
 
     @Unique
-    private void updateVanillaLightmapsBelow(final long sectionPos, final ChunkNibbleArray lightmapAbove, final boolean stopOnRemovedLightmap) {
+    private void updateVanillaLightmapsBelow(final long sectionPos, final ChunkNibbleArray lightmapAbove) {
         for (int y = ChunkSectionPos.unpackY(sectionPos) - 1; this.isAboveMinHeight(y); --y) {
             final long sectionPosBelow = ChunkSectionPos.asLong(ChunkSectionPos.unpackX(sectionPos), y, ChunkSectionPos.unpackZ(sectionPos));
 
-            if (stopOnRemovedLightmap) {
-                if (this.removedLightmaps.contains(sectionPosBelow)) {
-                    break;
-                }
-            } else {
-                this.removedLightmaps.remove(sectionPosBelow);
-            }
+            this.removedLightmaps.remove(sectionPosBelow);
 
             final ChunkNibbleArray lightmapBelow = this.getLightSection(sectionPosBelow, true);
 
