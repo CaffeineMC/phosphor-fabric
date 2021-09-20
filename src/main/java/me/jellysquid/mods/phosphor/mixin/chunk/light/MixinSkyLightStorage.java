@@ -211,14 +211,13 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         if (enabled) {
             if (this.preInitSkylightChunks.contains(chunkPos)) {
                 this.initSkylightChunks.add(chunkPos);
-                this.checkForUpdates();
+                this.markForUpdates();
             } else {
                 this.enabledColumns.add(chunkPos);
             }
         } else {
             this.enabledColumns.remove(chunkPos);
             this.initSkylightChunks.remove(chunkPos);
-            this.checkForUpdates();
         }
     }
 
@@ -452,7 +451,15 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
      */
     @Overwrite
     private void checkForUpdates() {
-        this.hasUpdates = !this.initSkylightChunks.isEmpty();
+        this.hasUpdates = !this.initSkylightChunks.isEmpty() || !this.removedLightmaps.isEmpty();
+    }
+
+    @Unique
+    private void markForUpdates() {
+        // Avoid volatile writes
+        if (!this.hasUpdates) {
+            this.hasUpdates = true;
+        }
     }
 
     @Unique
@@ -789,6 +796,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         // Re-parenting can be deferred as the removed parent is now unmodifiable
 
         this.removedLightmaps.add(sectionPos);
+        this.markForUpdates();
     }
 
     @Unique
