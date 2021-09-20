@@ -1,18 +1,21 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import me.jellysquid.mods.phosphor.common.chunk.light.SharedNibbleArrayMap;
-import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SharedSkyLightData;
+import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2IntHashMap;
+import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2ObjectHashMap;
 import net.minecraft.world.chunk.ChunkNibbleArray;
-import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.SkyLightStorage;
-import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(SkyLightStorage.Data.class)
-public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStorage.Data>
+public abstract class MixinSkyLightStorageData extends MixinChunkToNibbleArrayMap
         implements SkyLightStorageDataAccess, SharedSkyLightData {
     @Shadow
     private int minSectionY;
@@ -23,27 +26,17 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
     private Long2IntOpenHashMap columnToTopSection;
 
     // Our new double-buffered collection
+    @Unique
     private DoubleBufferedLong2IntHashMap topArraySectionYQueue;
 
-    // Indicates whether or not the extended data structures have been initialized
-    private boolean init;
-
-    protected MixinSkyLightStorageData(Long2ObjectOpenHashMap<ChunkNibbleArray> arrays) {
-        super(arrays);
-    }
-
     @Override
-    public void makeSharedCopy(Long2IntOpenHashMap map, DoubleBufferedLong2IntHashMap queue) {
-        this.topArraySectionYQueue = queue;
-        this.columnToTopSection = map;
+    public void makeSharedCopy(final DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> queue, final DoubleBufferedLong2IntHashMap topSectionQueue) {
+        this.makeSharedCopy(queue);
+
+        this.topArraySectionYQueue = topSectionQueue;
 
         // We need to immediately see all updates on the thread this is being copied to
-        if (queue != null) {
-            queue.flushChangesSync();
-        }
-
-        // Copies of this map should not re-initialize the data structures!
-        this.init = true;
+        this.topArraySectionYQueue.flushChangesSync();
     }
 
     /**
@@ -55,24 +48,22 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
     public SkyLightStorage.Data copy() {
         // This will be called immediately by LightStorage in the constructor
         // We can take advantage of this fact to initialize our extra properties here without additional hacks
-        if (!this.init) {
-            this.initialize();
+        if (!this.isInitialized()) {
+            this.init();
         }
 
         SkyLightStorage.Data data = new SkyLightStorage.Data(this.arrays, this.columnToTopSection, this.minSectionY);
-        ((SharedSkyLightData) (Object) data).makeSharedCopy(this.columnToTopSection, this.topArraySectionYQueue);
-        ((SharedNibbleArrayMap) (Object) data).makeSharedCopy((SharedNibbleArrayMap) this);
+        ((SharedSkyLightData) (Object) data).makeSharedCopy(this.getUpdateQueue(), this.topArraySectionYQueue);
 
         return data;
     }
 
-    private void initialize() {
-        ((SharedNibbleArrayMap) this).init();
+    @Override
+    protected void init() {
+        super.init();
 
         this.topArraySectionYQueue = new DoubleBufferedLong2IntHashMap();
         this.columnToTopSection = this.topArraySectionYQueue.createSyncView();
-
-        this.init = true;
     }
 
     @Override
@@ -82,14 +73,20 @@ public class MixinSkyLightStorageData extends ChunkToNibbleArrayMap<SkyLightStor
 
     @Override
     public int getHeight(long pos) {
-        return this.topArraySectionYQueue.getAsync(pos);
+        if (this.isShared()) {
+            return this.topArraySectionYQueue.getAsync(pos);
+        } else {
+            return this.topArraySectionYQueue.getSync(pos);
+        }
     }
 
     @Override
     public void updateMinHeight(final int y) {
+        this.checkExclusiveOwner();
+
         if (this.minSectionY > y) {
             this.minSectionY = y;
-            this.columnToTopSection.defaultReturnValue(this.minSectionY);
+            this.topArraySectionYQueue.defaultReturnValueSync(this.minSectionY);
         }
     }
 }

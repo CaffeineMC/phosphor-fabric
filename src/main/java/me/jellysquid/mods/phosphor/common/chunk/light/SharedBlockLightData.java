@@ -1,8 +1,13 @@
 package me.jellysquid.mods.phosphor.common.chunk.light;
 
+import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2ObjectHashMap;
+import net.minecraft.world.chunk.ChunkNibbleArray;
+
 public interface SharedBlockLightData {
     /**
-     * Marks this instance as a shared copy which cannot be directly written into.
+     * Make this instance a copy of another. The shared copy cannot be directly written into.
+     *
+     * @param queue The queue of light updates
      */
-    void makeSharedCopy();
+    void makeSharedCopy(DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> queue);
 }

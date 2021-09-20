@@ -1,14 +1,15 @@
 package me.jellysquid.mods.phosphor.common.chunk.light;
 
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2IntHashMap;
+import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2ObjectHashMap;
+import net.minecraft.world.chunk.ChunkNibbleArray;
 
 public interface SharedSkyLightData {
     /**
-     * Make this instance a copy of another, copying the object references from another instance into this one.
+     * Make this instance a copy of another. The shared copy cannot be directly written into.
      *
-     * @param map The sync-view of the {@param queue}
      * @param queue The queue of light updates
+     * @param topSectionQueue The queue of top sections
      */
-    void makeSharedCopy(Long2IntOpenHashMap map, DoubleBufferedLong2IntHashMap queue);
+    void makeSharedCopy(DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> queue, DoubleBufferedLong2IntHashMap topSectionQueue);
 }

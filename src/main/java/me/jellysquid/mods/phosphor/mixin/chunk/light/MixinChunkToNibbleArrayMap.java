@@ -1,14 +1,18 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.light.SharedNibbleArrayMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.phosphor.common.util.collections.DoubleBufferedLong2ObjectHashMap;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
-import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 
 @SuppressWarnings("OverwriteModifiers")
 @Mixin(ChunkToNibbleArrayMap.class)
-public abstract class MixinChunkToNibbleArrayMap implements SharedNibbleArrayMap {
+public abstract class MixinChunkToNibbleArrayMap {
     @Shadow
     private boolean cacheEnabled;
 
@@ -23,8 +27,27 @@ public abstract class MixinChunkToNibbleArrayMap implements SharedNibbleArrayMap
     @Shadow
     public abstract void clearCache();
 
+    @Shadow
+    @Final
+    protected Long2ObjectOpenHashMap<ChunkNibbleArray> arrays;
+
+    @Unique
     private DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> queue;
+    @Unique
     private boolean isShared;
+    // Indicates whether or not the extended data structures have been initialized
+    @Unique
+    private boolean init;
+
+    @Unique
+    protected boolean isShared() {
+        return this.isShared;
+    }
+
+    @Unique
+    protected boolean isInitialized() {
+        return this.init;
+    }
 
     /**
      * @reason Allow shared access, avoid copying
@@ -60,6 +83,7 @@ public abstract class MixinChunkToNibbleArrayMap implements SharedNibbleArrayMap
         return this.getUncached(pos);
     }
 
+    @Unique
     private ChunkNibbleArray getUncached(long pos) {
         ChunkNibbleArray array;
 
@@ -128,33 +152,46 @@ public abstract class MixinChunkToNibbleArrayMap implements SharedNibbleArrayMap
      * Check if the light array table is exclusively owned (not shared). If not, an exception is thrown to catch the
      * invalid state. Synchronous writes can only occur while the table is exclusively owned by the writer/actor thread.
      */
-    private void checkExclusiveOwner() {
+    @Unique
+    protected void checkExclusiveOwner() {
         if (this.isShared) {
             throw new IllegalStateException("Tried to synchronously write to light data array table after it was made shareable");
         }
     }
 
-    @Override
-    public DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> getUpdateQueue() {
+    /**
+     * Returns the queue of pending changes for this map.
+     */
+    @Unique
+    protected DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> getUpdateQueue() {
         return this.queue;
     }
 
-    @Override
-    public void makeSharedCopy(SharedNibbleArrayMap map) {
-        this.queue = map.getUpdateQueue();
-        this.isShared = this.queue != null;
+    /**
+     * Makes this map a shared copy of another. The shared copy cannot be directly written into.
+     */
+    protected void makeSharedCopy(final DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> queue) {
+        this.queue = queue;
+        this.isShared = true;
 
-        if (this.isShared) {
-            this.queue.flushChangesSync();
-        }
+        this.queue.flushChangesSync();
+
+        // Copies of this map should not re-initialize the data structures!
+        this.init = true;
     }
 
-    @Override
-    public void init() {
-        if (this.queue != null) {
+    /**
+     * Initializes the data for this extended chunk array map. This should only be called once with the initialization
+     * of a subtype.
+     * @throws IllegalStateException If the map has already been initialized
+     */
+    @Unique
+    protected void init() {
+        if (this.init) {
             throw new IllegalStateException("Map already initialized");
         }
 
         this.queue = new DoubleBufferedLong2ObjectHashMap<>();
+        this.init = true;
     }
 }

@@ -8,7 +8,6 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import me.jellysquid.mods.phosphor.common.chunk.light.IReadonly;
 import me.jellysquid.mods.phosphor.common.chunk.light.LevelPropagatorAccess;
-import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
 import me.jellysquid.mods.phosphor.common.util.chunk.light.EmptyChunkNibbleArray;
 import me.jellysquid.mods.phosphor.common.util.chunk.light.SkyLightChunkNibbleArray;
@@ -54,7 +53,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         long chunkOrig = ChunkSectionPos.asLong(chunkX, chunkYOrig, chunkZ);
 
-        StampedLock lock = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorageLock();
+        StampedLock lock = this.uncachedLightArraysLock;
         long stamp;
 
         ChunkNibbleArray array;
@@ -67,7 +66,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
             int chunkY = chunkYOrig;
             long chunk = chunkOrig;
 
-            SkyLightStorage.Data data = ((SharedLightStorageAccess<SkyLightStorage.Data>) this).getStorage();
+            SkyLightStorage.Data data = this.uncachedStorage;
             SkyLightStorageDataAccess sdata = ((SkyLightStorageDataAccess) (Object) data);
 
             int height = sdata.getHeight(ChunkSectionPos.withZeroY(chunk));

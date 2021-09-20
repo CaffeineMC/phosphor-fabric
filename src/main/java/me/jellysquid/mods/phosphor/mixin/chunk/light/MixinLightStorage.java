@@ -12,7 +12,6 @@ import me.jellysquid.mods.phosphor.common.chunk.light.IReadonly;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
-import me.jellysquid.mods.phosphor.common.chunk.light.SharedLightStorageAccess;
 import me.jellysquid.mods.phosphor.common.util.chunk.light.EmptyChunkNibbleArray;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -41,7 +40,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.concurrent.locks.StampedLock;
 
 @Mixin(LightStorage.class)
-public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> extends SectionDistanceLevelPropagator implements SharedLightStorageAccess<M>, LightStorageAccess {
+public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> extends SectionDistanceLevelPropagator implements LightStorageAccess {
     protected MixinLightStorage() {
         super(0, 0, 0);
     }
@@ -132,7 +131,12 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         return 0;
     }
 
-    private final StampedLock uncachedLightArraysLock = new StampedLock();
+    /**
+     * The lock which wraps {@link LightStorage#uncachedStorage}. Locking should always be
+     * performed when accessing values in the aforementioned storage.
+     */
+    @Unique
+    protected final StampedLock uncachedLightArraysLock = new StampedLock();
 
     /**
      * Replaces the two set of calls to unpack the XYZ coordinates from the input to just one, storing the result as local
@@ -390,16 +394,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
             this.notifySections.clear();
         }
-    }
-
-    @Override
-    public M getStorage() {
-        return this.uncachedStorage;
-    }
-
-    @Override
-    public StampedLock getStorageLock() {
-        return this.uncachedLightArraysLock;
     }
 
     @Override
