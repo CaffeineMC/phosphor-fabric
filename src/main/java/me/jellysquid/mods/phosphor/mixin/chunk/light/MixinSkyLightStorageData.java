@@ -89,4 +89,15 @@ public abstract class MixinSkyLightStorageData extends MixinChunkToNibbleArrayMa
             this.topArraySectionYQueue.defaultReturnValueSync(this.minSectionY);
         }
     }
+
+    @Override
+    public void setHeight(final long chunkPos, final int y) {
+        this.checkExclusiveOwner();
+
+        if (y > this.minSectionY) {
+            this.topArraySectionYQueue.putSync(chunkPos, y);
+        } else {
+            this.topArraySectionYQueue.removeSync(chunkPos);
+        }
+    }
 }

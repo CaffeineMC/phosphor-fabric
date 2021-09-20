@@ -12,4 +12,6 @@ public interface SkyLightStorageDataAccess {
     int getHeight(long pos);
 
     void updateMinHeight(int y);
+
+    void setHeight(long chunkPos, int y);
 }
