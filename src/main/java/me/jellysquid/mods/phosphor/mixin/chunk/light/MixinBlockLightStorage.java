@@ -1,5 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
+import it.unimi.dsi.fastutil.ints.IntIterable;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import me.jellysquid.mods.phosphor.common.chunk.light.BlockLightStorageAccess;
@@ -46,5 +47,15 @@ public abstract class MixinBlockLightStorage extends MixinLightStorage<BlockLigh
         }
 
         return complexity;
+    }
+
+    @Override
+    protected void beforeChunkEnabled(final long chunkPos) {
+        // onLoadSection() does nothing
+    }
+
+    @Override
+    protected void afterChunkDisabled(final long chunkPos, final IntIterable removedLightmaps) {
+        // onUnloadSection() does nothing
     }
 }

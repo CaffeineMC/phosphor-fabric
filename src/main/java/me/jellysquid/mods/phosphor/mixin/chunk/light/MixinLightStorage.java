@@ -1,5 +1,9 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntIterable;
+import it.unimi.dsi.fastutil.ints.IntIterator;
+import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
@@ -13,6 +17,7 @@ import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import me.jellysquid.mods.phosphor.common.util.chunk.light.EmptyChunkNibbleArray;
+import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
@@ -401,12 +406,30 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         return 0;
     }
 
+    /**
+     * This method has an equivalent effect to calling {@link #onLoadSection(long)} on all lightmaps in the specified chunk.
+     * Additional data can also be set up before enabling the chunk.
+     */
     @Unique
     protected void beforeChunkEnabled(final long chunkPos) {
+        for (int y = -1; y < 17; ++y) {
+            final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, y);
+
+            if (this.hasLightmap(sectionPos)) {
+                this.onLoadSection(sectionPos);
+            }
+        }
     }
 
+    /**
+     * This method has an equivalent effect to calling {@link #onUnloadSection(long)} on all (already removed) lightmaps in the specified chunk.
+     * Additional data can also be removed upon disabling the chunk.
+     */
     @Unique
-    protected void afterChunkDisabled(final long chunkPos) {
+    protected void afterChunkDisabled(final long chunkPos, final IntIterable removedLightmaps) {
+        for (IntIterator it = removedLightmaps.iterator(); it.hasNext(); ) {
+            this.onUnloadSection(ChunkSectionPosHelper.updateYLong(chunkPos, it.nextInt()));
+        }
     }
 
     @Unique
@@ -508,7 +531,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
     /**
      * Set up lightmaps and adjust complexities as needed for the given light change.
-     * Actions are only required for other affected positions, not for the given <code>blockPos</code> directly.
+     * Additional data for the given <code>blockPos</code> itself need to be updated manually, whereas the main lightmap complexity will be updated automatically.
      */
     @Unique
     protected void beforeLightChange(final long blockPos, final int oldVal, final int newVal, final ChunkNibbleArray lightmap) {
@@ -521,7 +544,8 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
     /**
      * Set up lightmaps and adjust complexities as needed for the given lightmap change.
-     * Actions are only required for other affected sections, not for the given <code>sectionPos</code> directly.
+     * If <code>oldLightmap == null</code>, then {@link #onLoadSection(long)} will be called later on. Otherwise, additional data for the given <code>sectionPos</code> itself need to be updated manually.
+     * The main lightmap complexity will always be updated automatically.
      */
     @Unique
     protected void beforeLightmapChange(final long sectionPos, final ChunkNibbleArray oldLightmap, final ChunkNibbleArray newLightmap) {
@@ -564,17 +588,9 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         for (final LongIterator it = this.markedEnabledChunks.iterator(); it.hasNext(); ) {
             final long chunkPos = it.nextLong();
 
+            // First need to register all lightmaps as this data is needed for calculating the initial complexity
+
             this.beforeChunkEnabled(chunkPos);
-
-            // First need to register all lightmaps via onLoadSection() as this data is needed for calculating the initial complexity
-
-            for (int i = -1; i < 17; ++i) {
-                final long sectionPos = ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), i, ChunkSectionPos.unpackZ(chunkPos));
-
-                if (this.hasLightmap(sectionPos)) {
-                    this.onLoadSection(sectionPos);
-                }
-            }
 
             // Now the initial complexities can be computed
 
@@ -644,30 +660,24 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
             // Now lightmaps can be removed
 
-            int sections = 0;
+            final IntList removedLightmaps = new IntArrayList();
 
             for (int i = -1; i < 17; ++i) {
-                final long sectionPos = ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), i, ChunkSectionPos.unpackZ(chunkPos));
+                final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, i);
 
                 this.queuedSections.remove(sectionPos);
 
                 if (this.removeLightmap(sectionPos)) {
-                    sections |= 1 << (i + 1);
+                    removedLightmaps.add(i);
                 }
             }
-
-            // Calling onUnloadSection() after removing all the lightmaps is slightly more efficient
 
             this.storage.clearCache();
-
-            for (int i = -1; i < 17; ++i) {
-                if ((sections & (1 << (i + 1))) != 0) {
-                    this.onUnloadSection(ChunkSectionPos.asLong(ChunkSectionPos.unpackX(chunkPos), i, ChunkSectionPos.unpackZ(chunkPos)));
-                }
-            }
-
             this.setColumnEnabled(chunkPos, false);
-            this.afterChunkDisabled(chunkPos);
+
+            // Remove all additional data
+
+            this.afterChunkDisabled(chunkPos, removedLightmaps);
         }
     }
 
