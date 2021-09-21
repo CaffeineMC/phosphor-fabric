@@ -43,6 +43,14 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
     @Invoker("propagateLevel")
     public abstract void invokePropagateLevel(long sourceId, long targetId, int level, boolean decrease);
 
+    @Shadow
+    protected abstract void propagateLevel(long sourceId, long targetId, int level, boolean decrease);
+
+    @Override
+    public void propagateLevel(long sourceId, long targetId, boolean decrease) {
+        this.propagateLevel(sourceId, targetId, this.getLevel(sourceId), decrease);
+    }
+
     @Override
     public void checkForUpdates() {
         this.hasPendingUpdates = this.minPendingLevel < this.levelCount;

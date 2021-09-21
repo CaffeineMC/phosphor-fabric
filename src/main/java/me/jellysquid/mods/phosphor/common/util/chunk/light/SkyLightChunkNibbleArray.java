@@ -3,8 +3,12 @@ package me.jellysquid.mods.phosphor.common.util.chunk.light;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 
 public class SkyLightChunkNibbleArray extends ReadonlyChunkNibbleArray {
+    public SkyLightChunkNibbleArray(final byte[] inheritedLightmap) {
+        super(inheritedLightmap);
+    }
+
     public SkyLightChunkNibbleArray(final ChunkNibbleArray inheritedLightmap) {
-        super(inheritedLightmap.asByteArray());
+        this(inheritedLightmap.asByteArray());
     }
 
     @Override

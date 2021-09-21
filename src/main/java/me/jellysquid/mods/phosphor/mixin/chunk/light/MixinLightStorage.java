@@ -18,6 +18,7 @@ import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import me.jellysquid.mods.phosphor.common.util.chunk.light.EmptyChunkNibbleArray;
 import me.jellysquid.mods.phosphor.common.util.math.ChunkSectionPosHelper;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
@@ -130,11 +131,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     @Override
     @Invoker("getLightSection")
     public abstract ChunkNibbleArray callGetLightSection(final long sectionPos, final boolean cached);
-
-    @Shadow
-    protected int getInitialLevel(long id) {
-        return 0;
-    }
 
     /**
      * The lock which wraps {@link LightStorage#uncachedStorage}. Locking should always be
@@ -435,7 +431,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     @Unique
     protected final LongSet enabledChunks = new LongOpenHashSet();
     @Unique
-    protected final Long2IntMap lightmapComplexities = setDefaultReturnValue(new Long2IntOpenHashMap(), -1);
+    protected final Long2IntMap lightmapComplexities = Util.make(new Long2IntOpenHashMap(), map -> map.defaultReturnValue(-1));
 
     @Unique
     private final LongSet markedEnabledChunks = new LongOpenHashSet();
@@ -447,12 +443,6 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     // This is put here since the relevant methods to overwrite are located in LightStorage
     @Unique
     protected LongSet nonOptimizableSections = new LongOpenHashSet();
-
-    @Unique
-    private static Long2IntMap setDefaultReturnValue(final Long2IntMap map, final int rv) {
-        map.defaultReturnValue(rv);
-        return map;
-    }
 
     @Unique
     protected ChunkNibbleArray getOrAddLightmap(final long sectionPos) {
