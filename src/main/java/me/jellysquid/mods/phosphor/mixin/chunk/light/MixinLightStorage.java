@@ -559,8 +559,22 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     @Shadow
     protected abstract void setColumnEnabled(long columnPos, boolean enabled);
 
-    @Shadow
-    protected abstract void setSectionStatus(final long sectionPos, final boolean notReady);
+    /**
+     * @author PhiPro
+     * @reason Re-implement completely, ensuring data consistency
+     */
+    @Overwrite
+    public void setSectionStatus(final long sectionPos, final boolean notReady) {
+        if (notReady) {
+            if (this.markedReadySections.remove(sectionPos) || (this.readySections.contains(sectionPos) && this.markedNotReadySections.add(sectionPos))) {
+                this.updateLevel(Long.MAX_VALUE, sectionPos, 2, false);
+            }
+        } else {
+            if (this.markedNotReadySections.remove(sectionPos) || (!this.readySections.contains(sectionPos) && this.markedReadySections.add(sectionPos))) {
+                this.updateLevel(Long.MAX_VALUE, sectionPos, 0, true);
+            }
+        }
+    }
 
     @Override
     @Invoker("setColumnEnabled")
