@@ -8,7 +8,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import me.jellysquid.mods.phosphor.common.chunk.light.IReadonly;
 import me.jellysquid.mods.phosphor.common.chunk.light.LevelPropagatorAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.SkyLightStorageDataAccess;
@@ -147,29 +146,43 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
     protected void beforeChunkEnabled(final long chunkPos) {
         // Initialize height data
 
-        for (int y = -1; y < 17; ++y) {
+        int minHeight = Integer.MAX_VALUE;
+        int height = Integer.MIN_VALUE;
+
+        for (final IntIterator it = this.getTrackedSections(chunkPos); it.hasNext(); ) {
+            final int y = it.nextInt();
             final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, y);
 
-            if (this.nonOptimizableSections.contains(sectionPos) || this.hasLightmap(sectionPos)) {
-                ((SkyLightStorageDataAccess) (Object) this.storage).updateMinHeight(y);
-                break;
+            if (y < minHeight && (this.nonOptimizableSections.contains(sectionPos) || this.getLightSection(sectionPos, true) != null)) {
+                minHeight = y;
             }
+
+            if (y > height && this.readySections.contains(sectionPos)) {
+                height = y;
+            }
+        }
+
+        ((SkyLightStorageDataAccess) (Object) this.storage).updateMinHeight(minHeight);
+
+        if (height != Integer.MIN_VALUE) {
+            ((SkyLightStorageDataAccess) (Object) this.storage).setHeight(chunkPos, height + 1);
         }
 
         // Remove lightmaps above the topmost non-empty section. These should only be trivial Vanilla lightmaps and are hence safe to remove
         // Any non-trivial lightmap would be a glitch, anyway
         // Removing these lightmaps is slightly more efficient and ensures triviality above the topmost non-empty section for non-lighted chunks
 
-        for (int y = 16; y >= -1; --y) {
-            final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, y);
+        for (final IntIterator it = this.getTrackedSections(chunkPos); it.hasNext(); ) {
+            final int y = it.nextInt();
 
-            if (this.readySections.contains(sectionPos)) {
-                this.increaseHeight(chunkPos, y);
-                break;
+            if (y <= height) {
+                continue;
             }
 
-            if (this.hasLightmap(sectionPos)) {
-                this.storage.removeChunk(sectionPos);
+            final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, y);
+
+            if (this.storage.removeChunk(sectionPos) != null) {
+                this.untrackSection(chunkPos, y);
                 this.dirtySections.add(sectionPos);
             }
         }
@@ -178,8 +191,8 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         // Initialize Vanilla lightmap complexities
 
-        for (int y = -1; y < 17; ++y) {
-            final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, y);
+        for (final IntIterator it = this.getTrackedSections(chunkPos); it.hasNext(); ) {
+            final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, it.nextInt());
             final ChunkNibbleArray lightmap = this.getLightSection(sectionPos, true);
 
             if (lightmap != null) {
@@ -270,8 +283,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         // Increase height for non-lighted chunks and pull in light from neighbors
 
         if (!this.scheduledHeightIncreases.isEmpty()) {
-            for (final ObjectIterator<Long2IntMap.Entry> it = this.scheduledHeightIncreases.long2IntEntrySet().iterator(); it.hasNext(); ) {
-                final Long2IntMap.Entry entry = it.next();
+            for (final Long2IntMap.Entry entry : this.scheduledHeightIncreases.long2IntEntrySet()) {
                 final long chunkPos = entry.getLongKey();
                 int height = entry.getIntValue();
                 final int oldHeight = ((SkyLightStorageDataAccess) (Object) this.storage).getHeight(chunkPos) - 1;
@@ -527,8 +539,8 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         final LevelPropagatorAccess levelPropagator = (LevelPropagatorAccess) lightProvider;
 
-        for (final LongIterator it = this.initSkylightChunks.iterator(); it.hasNext(); ) {
-            final long chunkPos = it.nextLong();
+        for (final LongIterator cit = this.initSkylightChunks.iterator(); cit.hasNext(); ) {
+            final long chunkPos = cit.nextLong();
             final int minY = ((SkyLightStorageDataAccess) (Object) this.storage).getHeight(chunkPos) - 1;
 
             // Set up a lightmap and adjust the complexity for the section below
@@ -559,7 +571,13 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
             // Now light values can be changed (sections above height are skylight-optimizable)
             // Delete lightmaps so the sections inherit direct skylight and add trivial lightmaps for Vanilla compatibility
 
-            for (int y = 16; y > minY; --y) {
+            for (final IntIterator it = this.getTrackedSections(chunkPos); it.hasNext(); ) {
+                final int y = it.nextInt();
+
+                if (y <= minY) {
+                    continue;
+                }
+
                 final long sectionPos = ChunkSectionPosHelper.updateYLong(chunkPos, y);
 
                 // All lightmaps above height are trivial, so no extra cleanup is required
@@ -941,13 +959,6 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         super.setLevel(id, level);
     }
 
-    @Unique
-    private void increaseHeight(final long chunkPos, final int y) {
-        if (y + 1 > ((SkyLightStorageDataAccess) (Object) this.storage).getHeight(chunkPos)) {
-            ((SkyLightStorageDataAccess) (Object) this.storage).setHeight(chunkPos, y + 1);
-        }
-    }
-
     @Override
     protected ChunkNibbleArray createInitialVanillaLightmap(final long sectionPos) {
         // Attempt to restore data stripped from vanilla saves. See MC-198987
@@ -976,6 +987,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         final ChunkNibbleArray lightmap = new ChunkNibbleArray(new byte[2048]);
         this.storage.put(sectionPos, lightmap);
+        this.trackSection(sectionPos);
         this.storage.clearCache();
 
         this.onLoadSection(sectionPos);
@@ -1004,7 +1016,11 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         final int y = ChunkSectionPos.unpackY(sectionPos);
 
         ((SkyLightStorageDataAccess) (Object) this.storage).updateMinHeight(y);
-        this.increaseHeight(ChunkSectionPos.withZeroY(sectionPos), y);
+        final long chunkPos = ChunkSectionPos.withZeroY(sectionPos);
+
+        if (y + 1 > ((SkyLightStorageDataAccess) (Object) this.storage).getHeight(chunkPos)) {
+            ((SkyLightStorageDataAccess) (Object) this.storage).setHeight(chunkPos, y + 1);
+        }
 
         // Vanilla lightmaps need to be re-parented immediately as the old parent can now be modified without informing them
 
