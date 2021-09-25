@@ -74,9 +74,7 @@ public abstract class MixinServerLightingProvider extends MixinLightingProvider 
             }
 
             if (!excludeBlocks) {
-                chunk.getLightSourcesStream().forEach((blockPos) -> {
-                    super.addLightSource(blockPos, chunk.getLuminance(blockPos));
-                });
+                chunk.getLightSourcesStream().forEach(blockPos -> super.addLightSource(blockPos, chunk.getLuminance(blockPos)));
             }
         },
             () -> "lightChunk " + chunkPos + " " + excludeBlocks

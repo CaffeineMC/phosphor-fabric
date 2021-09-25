@@ -26,10 +26,6 @@ public abstract class MixinLightingProvider implements InitialLightingAccess
     }
 
     @Shadow
-    public void setColumnEnabled(ChunkPos pos, boolean lightEnabled) {
-    }
-
-    @Shadow
     public void setRetainData(ChunkPos pos, boolean retainData) {
     }
 

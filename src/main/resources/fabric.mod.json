@@ -16,11 +16,6 @@
   "license": "LGPL-3.0-only",
   "icon": "assets/phosphor/icon.png",
   "environment": "*",
-  "entrypoints": {
-    "main": [
-      "me.jellysquid.mods.phosphor.common.PhosphorMod"
-    ]
-  },
   "mixins": [
     "phosphor.mixins.json"
   ],

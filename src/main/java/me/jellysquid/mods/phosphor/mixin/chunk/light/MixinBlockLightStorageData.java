@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
 @Mixin(BlockLightStorage.Data.class)
-public abstract class MixinBlockLightStorageData extends MixinChunkToNibbleArrayMap implements SharedBlockLightData{
+public abstract class MixinBlockLightStorageData extends MixinChunkToNibbleArrayMap implements SharedBlockLightData {
     @Override
     public void makeSharedCopy(final DoubleBufferedLong2ObjectHashMap<ChunkNibbleArray> queue) {
         super.makeSharedCopy(queue);

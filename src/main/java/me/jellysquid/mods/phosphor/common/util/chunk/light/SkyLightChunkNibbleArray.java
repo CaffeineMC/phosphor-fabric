@@ -16,6 +16,7 @@ public class SkyLightChunkNibbleArray extends ReadonlyChunkNibbleArray {
         return super.getIndex(x, 0, z);
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     public byte[] asByteArray() {
         byte[] byteArray = new byte[2048];

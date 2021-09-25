@@ -1,8 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
-import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
 import me.jellysquid.mods.phosphor.common.chunk.light.BlockLightStorageAccess;
-import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.util.LightUtil;
 import me.jellysquid.mods.phosphor.common.util.math.DirectionHelper;
 import net.minecraft.block.BlockState;
@@ -10,11 +8,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.world.LightType;
-import net.minecraft.world.chunk.ChunkProvider;
-import net.minecraft.world.chunk.light.BlockLightStorage;
 import net.minecraft.world.chunk.light.ChunkBlockLightProvider;
-import net.minecraft.world.chunk.light.ChunkLightProvider;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -23,12 +17,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import static net.minecraft.util.math.ChunkSectionPos.getSectionCoord;
 
 @Mixin(ChunkBlockLightProvider.class)
-public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<BlockLightStorage.Data, BlockLightStorage>
-        implements LevelPropagatorExtended, LightProviderBlockAccess {
-    public MixinChunkBlockLightProvider(ChunkProvider chunkProvider, LightType type, BlockLightStorage lightStorage) {
-        super(chunkProvider, type, lightStorage);
-    }
-
+public abstract class MixinChunkBlockLightProvider extends MixinChunkLightProvider {
     @Shadow
     protected abstract int getLightSourceLuminance(long blockPos);
 
@@ -115,7 +104,6 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
      * @reason Use faster implementation
      * @author JellySquid
      */
-    @Override
     @Overwrite
     public void propagateLevel(long id, int targetLevel, boolean mergeAsMin) {
         int x = BlockPos.unpackLongX(id);
@@ -133,7 +121,7 @@ public abstract class MixinChunkBlockLightProvider extends ChunkLightProvider<Bl
 
             long adjChunk = ChunkSectionPos.asLong(getSectionCoord(adjX), getSectionCoord(adjY), getSectionCoord(adjZ));
 
-            if ((chunk == adjChunk) || this.lightStorage.hasSection(adjChunk)) {
+            if ((chunk == adjChunk) || this.hasSection(adjChunk)) {
                 this.propagateLevel(id, state, BlockPos.asLong(adjX, adjY, adjZ), targetLevel, mergeAsMin);
             }
         }

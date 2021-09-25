@@ -3,10 +3,7 @@ package me.jellysquid.mods.phosphor.mixin.chunk.light;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfo;
 import me.jellysquid.mods.phosphor.common.block.BlockStateLightInfoAccess;
-import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
 import me.jellysquid.mods.phosphor.common.chunk.light.InitialLightingAccess;
-import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
-import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderBlockAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import net.minecraft.block.BlockState;
@@ -19,16 +16,16 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.ChunkSection;
-import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
-import net.minecraft.world.chunk.light.LevelPropagator;
 import net.minecraft.world.chunk.light.LightStorage;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -38,8 +35,8 @@ import java.util.Arrays;
 import java.util.BitSet;
 
 @Mixin(ChunkLightProvider.class)
-public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>, S extends LightStorage<M>>
-        extends LevelPropagator implements LightProviderUpdateTracker, LightProviderBlockAccess, LightInitializer, LevelUpdateListener, InitialLightingAccess {
+public abstract class MixinChunkLightProvider
+        extends MixinLevelPropagator implements InitialLightingAccess, LightProviderUpdateTracker {
     private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
     private static final ChunkSection[] EMPTY_SECTION_ARRAY = new ChunkSection[16];
 
@@ -59,10 +56,6 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     private long prevChunkBucketKey = ChunkPos.MARKER;
     private BitSet prevChunkBucketSet;
 
-    protected MixinChunkLightProvider(int levelCount, int expectedLevelSize, int expectedTotalSize) {
-        super(levelCount, expectedLevelSize, expectedTotalSize);
-    }
-
     @Inject(method = "clearChunkCache", at = @At("RETURN"))
     private void onCleanup(CallbackInfo ci) {
         // This callback may be executed from the constructor above, and the object won't be initialized then
@@ -72,9 +65,24 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
         }
     }
 
+    @Unique
+    protected boolean hasSection(final long sectionPos) {
+        return ((LightStorageAccess) this.lightStorage).callHasSection(sectionPos);
+    }
+
+    @Unique
+    protected ChunkNibbleArray getLightSection(final long chunkId) {
+        return ((LightStorageAccess) this.lightStorage).callGetLightSection(chunkId, true);
+    }
+
     // [VanillaCopy] method_20479
-    @Override
-    public BlockState getBlockStateForLighting(int x, int y, int z) {
+    /**
+     * Returns the BlockState which represents the block at the specified coordinates in the world. This may return
+     * a different BlockState than what actually exists at the coordinates (such as if it is out of bounds), but will
+     * always represent a state with valid light properties for that coordinate.
+     */
+    @Unique
+    protected BlockState getBlockStateForLighting(int x, int y, int z) {
         if (World.isHeightInvalid(y)) {
             return DEFAULT_STATE;
         }
@@ -120,8 +128,11 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     }
 
     // [VanillaCopy] method_20479
-    @Override
-    public int getSubtractedLight(BlockState state, int x, int y, int z) {
+    /**
+     * Returns the amount of light which is blocked at the specified coordinates by the BlockState.
+     */
+    @Unique
+    protected int getSubtractedLight(BlockState state, int x, int y, int z) {
         BlockStateLightInfo info = ((BlockStateLightInfoAccess) state).getLightInfo();
 
         if (info != null) {
@@ -136,8 +147,12 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     }
 
     // [VanillaCopy] method_20479
-    @Override
-    public VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir) {
+    /**
+     * Returns the VoxelShape of a block for lighting without making a second call to
+     * {@link #getBlockStateForLighting(int, int, int)}.
+     */
+    @Unique
+    protected VoxelShape getOpaqueShape(BlockState state, int x, int y, int z, Direction dir) {
         if (state != null && state.hasSidedTransparency()) {
             BlockStateLightInfo info = ((BlockStateLightInfoAccess) state).getLightInfo();
 
@@ -157,12 +172,6 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
 
     private VoxelShape getOpaqueShapeFallback(BlockState state, int x, int y, int z, Direction dir) {
         return VoxelShapes.extrudeFace(state.getCullingShape(this.chunkProvider.getWorld(), this.reusableBlockPos.set(x, y, z)), dir);
-    }
-
-    @Override
-    public void spreadLightInto(long a, long b) {
-        this.updateLevel(a, b, this.getPropagatedLevel(a, b, this.getLevel(a)), false);
-        this.updateLevel(b, a, this.getPropagatedLevel(b, a, this.getLevel(b)), false);
     }
 
     /**
@@ -198,7 +207,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     }
 
     @Override
-    public void onPendingUpdateRemoved(long blockPos) {
+    protected void onPendingUpdateRemoved(long blockPos) {
         long key = getBucketKeyForBlock(blockPos);
 
         BitSet bits;
@@ -221,7 +230,7 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     }
 
     @Override
-    public void onPendingUpdateAdded(long blockPos) {
+    protected void onPendingUpdateAdded(long blockPos) {
         long key = getBucketKeyForBlock(blockPos);
 
         BitSet bits;
@@ -276,6 +285,12 @@ public abstract class MixinChunkLightProvider<M extends ChunkToNibbleArrayMap<M>
     @Shadow
     @Final
     protected LightStorage<?> lightStorage;
+
+    @Shadow
+    protected void resetLevel(long id) {}
+
+    @Shadow
+    protected abstract int getCurrentLevelFromSection(ChunkNibbleArray section, long blockPos);
 
     /**
      * @author PhiPro

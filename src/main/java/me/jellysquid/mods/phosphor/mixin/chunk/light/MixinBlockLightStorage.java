@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(BlockLightStorage.class)
-public abstract class MixinBlockLightStorage extends MixinLightStorage<BlockLightStorage.Data> implements BlockLightStorageAccess {
+public abstract class MixinBlockLightStorage extends MixinLightStorage implements BlockLightStorageAccess {
     @Unique
     private final LongSet lightEnabled = new LongOpenHashSet();
 

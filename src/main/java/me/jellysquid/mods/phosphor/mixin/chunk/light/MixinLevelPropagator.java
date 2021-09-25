@@ -1,8 +1,6 @@
 package me.jellysquid.mods.phosphor.mixin.chunk.light;
 
 import it.unimi.dsi.fastutil.longs.Long2ByteMap;
-import me.jellysquid.mods.phosphor.common.chunk.level.LevelPropagatorExtended;
-import me.jellysquid.mods.phosphor.common.chunk.level.LevelUpdateListener;
 import me.jellysquid.mods.phosphor.common.chunk.light.LevelPropagatorAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.MathHelper;
@@ -10,12 +8,13 @@ import net.minecraft.world.chunk.light.LevelPropagator;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(LevelPropagator.class)
-public abstract class MixinLevelPropagator implements LevelPropagatorExtended, LevelUpdateListener, LevelPropagatorAccess {
+public abstract class MixinLevelPropagator implements LevelPropagatorAccess {
     @Shadow
     @Final
     private Long2ByteMap pendingUpdates;
@@ -46,6 +45,9 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
     @Shadow
     protected abstract void propagateLevel(long sourceId, long targetId, int level, boolean decrease);
 
+    @Shadow
+    protected abstract void removePendingUpdate(long id);
+
     @Override
     public void propagateLevel(long sourceId, long targetId, boolean decrease) {
         this.propagateLevel(sourceId, targetId, this.getLevel(sourceId), decrease);
@@ -57,8 +59,12 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
     }
 
     // [VanillaCopy] LevelPropagator#propagateLevel(long, long, int, boolean)
-    @Override
-    public void propagateLevel(long sourceId, BlockState sourceState, long targetId, int level, boolean decrease) {
+    /**
+     * Mirrors {@link LevelPropagator#propagateLevel(long, int, boolean)}, but allows a block state to be passed to
+     * prevent subsequent lookup later.
+     */
+    @Unique
+    protected void propagateLevel(long sourceId, BlockState sourceState, long targetId, int level, boolean decrease) {
         int pendingLevel = this.pendingUpdates.get(targetId) & 0xFF;
 
         int propagatedLevel = this.getPropagatedLevel(sourceId, sourceState, targetId, level);
@@ -86,8 +92,12 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
         }
     }
 
-    @Override
-    public int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level) {
+    /**
+     * Copy of {@link #getPropagatedLevel(long, long, int)} but with an additional argument to pass the
+     * block state belonging to {@param sourceId}.
+     */
+    @Unique
+    protected int getPropagatedLevel(long sourceId, BlockState sourceState, long targetId, int level) {
         return this.getPropagatedLevel(sourceId, targetId, level);
     }
 
@@ -113,13 +123,13 @@ public abstract class MixinLevelPropagator implements LevelPropagatorExtended, L
         return ret;
     }
 
-    @Override
-    public void onPendingUpdateAdded(long key) {
+    @Unique
+    protected void onPendingUpdateAdded(long key) {
         // NO-OP
     }
 
-    @Override
-    public void onPendingUpdateRemoved(long key) {
+    @Unique
+    protected void onPendingUpdateRemoved(long key) {
         // NO-OP
     }
 }

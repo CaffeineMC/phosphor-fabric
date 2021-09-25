@@ -17,7 +17,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import me.jellysquid.mods.phosphor.common.chunk.light.IReadonly;
-import me.jellysquid.mods.phosphor.common.chunk.light.LightInitializer;
+import me.jellysquid.mods.phosphor.common.chunk.light.LevelPropagatorAccess;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import me.jellysquid.mods.phosphor.common.chunk.light.LightStorageAccess;
 import me.jellysquid.mods.phosphor.common.util.chunk.light.EmptyChunkNibbleArray;
@@ -51,14 +51,14 @@ import java.util.concurrent.locks.StampedLock;
 import java.util.function.LongPredicate;
 
 @Mixin(LightStorage.class)
-public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> extends SectionDistanceLevelPropagator implements LightStorageAccess {
+public abstract class MixinLightStorage extends SectionDistanceLevelPropagator implements LightStorageAccess {
     protected MixinLightStorage() {
         super(0, 0, 0);
     }
 
     @Shadow
     @Final
-    protected M storage;
+    protected ChunkToNibbleArrayMap<?> storage;
 
     @Mutable
     @Shadow
@@ -91,12 +91,11 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     @Shadow
     protected abstract void onLoadSection(long blockPos);
 
-    @SuppressWarnings("unused")
     @Shadow
     protected volatile boolean hasLightUpdates;
 
     @Shadow
-    protected volatile M uncachedStorage;
+    protected volatile ChunkToNibbleArrayMap<?> uncachedStorage;
 
     @Shadow
     protected abstract ChunkNibbleArray createSection(long pos);
@@ -183,7 +182,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     }
 
     /**
-     * The lock which wraps {@link LightStorage#uncachedStorage}. Locking should always be
+     * The lock which wraps {@link #uncachedStorage}. Locking should always be
      * performed when accessing values in the aforementioned storage.
      */
     @Unique
@@ -348,7 +347,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
      * @reason Re-implement completely
      */
     @Overwrite
-    public void updateLight(ChunkLightProvider<M, ?> lightProvider, boolean doSkylight, boolean skipEdgeLightPropagation) {
+    public void updateLight(final ChunkLightProvider<?, ?> lightProvider, final boolean doSkylight, final boolean skipEdgeLightPropagation) {
         if (!this.hasLightUpdates()) {
             return;
         }
@@ -366,7 +365,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         }
         
         while (it.hasNext()) {
-            updateSection(lightProvider, it.nextLong());
+            this.updateSection(lightProvider, it.nextLong());
         }
 
         this.queuedEdgeSections.clear();
@@ -383,8 +382,10 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
      * @author JellySquid
      */
     @Overwrite
-    private void updateSection(ChunkLightProvider<M, ?> chunkLightProvider, long pos) {
+    private void updateSection(final ChunkLightProvider<?, ?> chunkLightProvider, long pos) {
         if (this.hasSection(pos)) {
+            final LevelPropagatorAccess levelPropagator = (LevelPropagatorAccess) chunkLightProvider;
+
             int x = ChunkSectionPos.getBlockCoord(ChunkSectionPos.unpackX(pos));
             int y = ChunkSectionPos.getBlockCoord(ChunkSectionPos.unpackY(pos));
             int z = ChunkSectionPos.getBlockCoord(ChunkSectionPos.unpackZ(pos));
@@ -436,10 +437,13 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
                                 continue;
                         }
 
-                        ((LightInitializer) chunkLightProvider).spreadLightInto(a, b);
+                        levelPropagator.propagateLevel(a, b, false);
+                        levelPropagator.propagateLevel(b, a, false);
                     }
                 }
             }
+
+            levelPropagator.checkForUpdates();
         }
     }
 
@@ -455,7 +459,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
             try {
                 // This only performs a shallow copy compared to before
-                M map = this.storage.copy();
+                ChunkToNibbleArrayMap<?> map = this.storage.copy();
                 map.disableCache();
 
                 this.uncachedStorage = map;
@@ -524,7 +528,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
     // This is put here since the relevant methods to overwrite are located in LightStorage
     @Unique
-    protected LongSet nonOptimizableSections = new LongOpenHashSet();
+    protected final LongSet nonOptimizableSections = new LongOpenHashSet();
 
     @Unique
     protected ChunkNibbleArray getOrAddLightmap(final long sectionPos) {
@@ -636,6 +640,10 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
     protected int getInitialLightmapComplexity(final long sectionPos, final ChunkNibbleArray lightmap) {
         return 0;
     }
+
+    @Invoker("hasSection")
+    @Override
+    public abstract boolean callHasSection(long sectionPos);
 
     /**
      * Determines whether light updates should be propagated into the given section.

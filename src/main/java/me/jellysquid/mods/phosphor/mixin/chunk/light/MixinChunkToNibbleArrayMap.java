@@ -10,7 +10,6 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
-@SuppressWarnings("OverwriteModifiers")
 @Mixin(ChunkToNibbleArrayMap.class)
 public abstract class MixinChunkToNibbleArrayMap {
     @Shadow
@@ -66,6 +65,7 @@ public abstract class MixinChunkToNibbleArrayMap {
      * @reason Allow shared access, avoid copying
      * @author JellySquid
      */
+    @SuppressWarnings("OverwriteModifiers")
     @Overwrite
     public ChunkNibbleArray get(long pos) {
         if (this.cacheEnabled) {
@@ -128,6 +128,7 @@ public abstract class MixinChunkToNibbleArrayMap {
      * @reason Allow shared access, avoid copying
      * @author JellySquid
      */
+    @SuppressWarnings("OverwriteModifiers")
     @Overwrite
     public ChunkNibbleArray removeChunk(long chunkPos) {
         this.checkExclusiveOwner();
