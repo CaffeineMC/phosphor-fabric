@@ -257,6 +257,21 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
         lightProvider.propagateLevel(BlockPos.offset(dst, dir), dst, true);
     }
 
+    @Override
+    protected void runCleanups(final ChunkLightProvider<?, ?> lightProvider) {
+        super.runCleanups(lightProvider);
+
+        if (!this.hasUpdates) {
+            return;
+        }
+
+        this.updateRemovedLightmaps();
+
+        if (lightProvider == null) {
+            this.checkForUpdates();
+        }
+    }
+
     /**
      * @author PhiPro
      * @reason Re-implement completely
@@ -271,7 +286,6 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
         this.updateHeights(lightProvider);
         this.lightChunks(lightProvider);
-        this.updateRemovedLightmaps();
 
         this.hasUpdates = false;
     }

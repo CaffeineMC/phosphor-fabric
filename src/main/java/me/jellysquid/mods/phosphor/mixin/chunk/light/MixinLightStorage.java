@@ -301,6 +301,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
                 if (lightmap != null && ((IReadonly) lightmap).isReadonly()) {
                     this.vanillaLightmapsToRemove.add(id);
+                    this.markForLightUpdates();
                 } else {
                     this.untrackSection(id);
                 }
@@ -323,20 +324,38 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         }
     }
 
+    @Override
+    public void runCleanups() {
+        this.runCleanups(null);
+    }
+
+    @Unique
+    protected void runCleanups(final ChunkLightProvider<?, ?> lightProvider) {
+        if (!this.hasLightUpdates) {
+            return;
+        }
+
+        this.removeTrivialLightmaps(lightProvider);
+        this.removeVanillaLightmaps(lightProvider);
+
+        if (lightProvider == null) {
+            this.checkForUpdates();
+        }
+    }
+
     /**
      * @author PhiPro
      * @reason Re-implement completely
      */
     @Overwrite
-    public void updateLight(ChunkLightProvider<M, ?> chunkLightProvider, boolean doSkylight, boolean skipEdgeLightPropagation) {
+    public void updateLight(ChunkLightProvider<M, ?> lightProvider, boolean doSkylight, boolean skipEdgeLightPropagation) {
         if (!this.hasLightUpdates()) {
             return;
         }
 
         this.initializeChunks();
-        this.addQueuedLightmaps(chunkLightProvider);
-        this.removeTrivialLightmaps(chunkLightProvider);
-        this.removeVanillaLightmaps(chunkLightProvider);
+        this.addQueuedLightmaps(lightProvider);
+        this.runCleanups(lightProvider);
 
         final LongIterator it;
 
@@ -347,7 +366,7 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
         }
         
         while (it.hasNext()) {
-            updateSection(chunkLightProvider, it.nextLong());
+            updateSection(lightProvider, it.nextLong());
         }
 
         this.queuedEdgeSections.clear();
@@ -548,6 +567,11 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
             this.trivialLightmaps.add(sectionPos);
             this.markForLightUpdates();
         }
+    }
+
+    @Unique
+    private void checkForUpdates() {
+        this.hasLightUpdates = !this.trivialLightmaps.isEmpty() || !this.vanillaLightmapsToRemove.isEmpty() || !this.markedEnabledChunks.isEmpty() || !this.queuedSections.isEmpty();
     }
 
     @Unique
@@ -837,11 +861,13 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
         // Remove pending light updates for sections that no longer support light propagations
 
-        for (final LongIterator it = this.trivialLightmaps.iterator(); it.hasNext(); ) {
-            final long sectionPos = it.nextLong();
+        if (lightProvider != null) {
+            for (final LongIterator it = this.trivialLightmaps.iterator(); it.hasNext(); ) {
+                final long sectionPos = it.nextLong();
 
-            if (!this.hasSection(sectionPos)) {
-                this.removeSection(lightProvider, sectionPos);
+                if (!this.hasSection(sectionPos)) {
+                    this.removeSection(lightProvider, sectionPos);
+                }
             }
         }
 
@@ -862,11 +888,13 @@ public abstract class MixinLightStorage<M extends ChunkToNibbleArrayMap<M>> exte
 
         // Remove pending light updates for sections that no longer support light propagations
 
-        for (final LongIterator it = this.vanillaLightmapsToRemove.iterator(); it.hasNext(); ) {
-            final long sectionPos = it.nextLong();
+        if (lightProvider != null) {
+            for (final LongIterator it = this.vanillaLightmapsToRemove.iterator(); it.hasNext(); ) {
+                final long sectionPos = it.nextLong();
 
-            if (!this.hasSection(sectionPos)) {
-                this.removeSection(lightProvider, sectionPos);
+                if (!this.hasSection(sectionPos)) {
+                    this.removeSection(lightProvider, sectionPos);
+                }
             }
         }
 

@@ -12,6 +12,11 @@ public interface LightStorageAccess {
      */
     int getLightWithoutLightmap(long blockPos);
 
+    /**
+     * Runs scheduled cleanups of light data
+     */
+    void runCleanups();
+
     void enableLightUpdates(long chunkPos);
 
     /**
