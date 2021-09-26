@@ -1,6 +1,6 @@
 {
     "required": true,
-    "package": "me.jellysquid.mods.phosphor.mixin",
+    "package": "net.caffeinemc.phosphor.mixin",
     "compatibilityLevel": "JAVA_8",
     "mixins": [
         "block.MixinAbstractBlockState",
