@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '0.6-SNAPSHOT'
+    id 'fabric-loom' version '0.9-SNAPSHOT'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -16,9 +16,12 @@ if (build_id == null) {
     version = "${project.mod_version}+build.${build_id}"
 }
 
-minecraft {
-    refmapName = "mixins.phosphor.refmap.json"
-    accessWidener = file("src/main/resources/phosphor.accesswidener")
+loom {
+    accessWidenerPath = file("src/main/resources/phosphor.accesswidener")
+	
+	mixin {
+        defaultRefmapName = "mixins.phosphor.refmap.json"
+    }
 }
 
 dependencies {
@@ -36,20 +39,19 @@ processResources {
     }
 }
 
-// ensure that the encoding is set to UTF-8, no matter what the system default is
-// this fixes some edge cases with special characters not displaying correctly
-// see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
-tasks.withType(JavaCompile) {
-	options.encoding = "UTF-8"
+tasks.withType(JavaCompile).configureEach {
+    // ensure that the encoding is set to UTF-8, no matter what the system default is
+    // this fixes some edge cases with special characters not displaying correctly
+    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+    // If Javadoc is generated, this must be specified in that task too.
+    it.options.encoding = "UTF-8"
 }
 
-// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-// if it is present.
-// If you remove this task, sources will not be generated.
-task sourcesJar(type: Jar, dependsOn: classes) {
-	classifier = "sources"
-	from sourceSets.main.allSource
-    from "LICENSE.txt"
+java {
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
 }
 
 jar {

@@ -83,7 +83,7 @@ public abstract class MixinChunkLightProvider
      */
     @Unique
     protected BlockState getBlockStateForLighting(int x, int y, int z) {
-        if (World.isHeightInvalid(y)) {
+        if (World.isOutOfBuildLimitVertically(y)) {
             return DEFAULT_STATE;
         }
 

@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.Shadow;
 @Mixin(ChunkNibbleArray.class)
 public abstract class MixinChunkNibbleArray implements IReadonly {
     @Shadow
-    protected byte[] byteArray;
+    protected byte[] bytes;
 
     /**
      * @reason Avoid an additional branch.
@@ -21,7 +21,7 @@ public abstract class MixinChunkNibbleArray implements IReadonly {
      */
     @Overwrite
     private int get(int idx) {
-        byte[] arr = this.byteArray;
+        byte[] arr = this.bytes;
 
         if (arr == null) {
             return 0;
@@ -43,10 +43,10 @@ public abstract class MixinChunkNibbleArray implements IReadonly {
             throw new UnsupportedOperationException("Cannot modify readonly ChunkNibbleArray");
         }
 
-        byte[] arr = this.byteArray;
+        byte[] arr = this.bytes;
 
         if (arr == null) {
-            this.byteArray = (arr = new byte[2048]);
+            this.bytes = (arr = new byte[2048]);
         }
 
         int byteIdx = idx >> 1;

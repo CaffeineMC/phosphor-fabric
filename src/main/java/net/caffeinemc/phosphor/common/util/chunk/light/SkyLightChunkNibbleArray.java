@@ -22,7 +22,7 @@ public class SkyLightChunkNibbleArray extends ReadonlyChunkNibbleArray {
         byte[] byteArray = new byte[2048];
 
         for(int i = 0; i < 16; ++i) {
-            System.arraycopy(this.byteArray, 0, byteArray, i * 128, 128);
+            System.arraycopy(this.bytes, 0, byteArray, i * 128, 128);
         }
 
         return byteArray;
