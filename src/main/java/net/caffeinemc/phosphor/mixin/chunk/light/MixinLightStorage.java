@@ -295,7 +295,7 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
         if (oldLevel < 2 && level >= 2) {
             this.nonOptimizableSections.remove(id);
 
-            if (this.enabledChunks.contains(id)) {
+            if (this.enabledChunks.contains(ChunkSectionPos.withZeroY(id))) {
                 final ChunkNibbleArray lightmap = this.getLightSection(id, true);
 
                 if (lightmap != null && ((IReadonly) lightmap).isReadonly()) {
