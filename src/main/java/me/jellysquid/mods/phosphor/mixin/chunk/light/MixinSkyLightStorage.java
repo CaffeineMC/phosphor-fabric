@@ -595,13 +595,15 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
 
                 this.changeLightmapComplexity(sectionPosBelow, getComplexityChange(lightmapBelow.get(x, 15, z), oldVal, newVal));
             }
-        }
+        } else if (this.dirtySections.add(sectionPos)) {
+            // Vanilla lightmaps need to be re-parented as they otherwise leak a reference to the old lightmap
+            // Dark lightmaps do not leak a reference
 
-        // Vanilla lightmaps need to be re-parented as they otherwise leak a reference to the old lightmap
-
-        if (this.dirtySections.add(sectionPos)) {
             this.storage.replaceWithCopy(sectionPos);
-            this.updateVanillaLightmapsBelow(sectionPos, this.getLightSection(sectionPos, true));
+
+            if (this.vanillaLightmapComplexities.get(sectionPos) != 0) {
+                this.updateVanillaLightmapsBelow(sectionPos, this.getLightSection(sectionPos, true));
+            }
         }
     }
 
@@ -711,11 +713,12 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
                 if (complexity != 0) {
                     this.getOrAddLightmap(sectionPosBelow);
                     this.setLightmapComplexity(sectionPosBelow, complexity);
-                } else if (oldLightmap != null) {
+                } else if (vanillaComplexity != 0) {
                     // Vanilla lightmaps need to be re-parented as they otherwise leak a reference to the old lightmap
+                    // Dark lightmaps do not leak a reference
                     // If oldLightmap == null, this will be done in onLoadSection()
 
-                    this.updateVanillaLightmapsBelow(sectionPos, vanillaComplexity == 0 ? null : newLightmap);
+                    this.updateVanillaLightmapsBelow(sectionPos, newLightmap);
                 }
             } else {
                 int amount = 0;
@@ -877,11 +880,13 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage<SkyLightSto
      */
     @Overwrite
     public void onUnloadSection(long sectionPos) {
-        this.vanillaLightmapComplexities.remove(sectionPos);
-
         // Re-parenting can be deferred as the removed parent is now unmodifiable
-        this.removedLightmaps.add(sectionPos);
-        this.markForUpdates();
+        // Dark lightmaps do not leak a reference
+
+        if (this.vanillaLightmapComplexities.remove(sectionPos) != 0) {
+            this.removedLightmaps.add(sectionPos);
+            this.markForUpdates();
+        }
 
         if (ChunkSectionPos.unpackY(sectionPos) + 1 == ((SkyLightStorageDataAccess) (Object) this.storage).getHeight(ChunkSectionPos.withZeroY(sectionPos)) && !this.readySections.contains(sectionPos)) {
             this.decreaseHeight(sectionPos);
