@@ -2,8 +2,7 @@ name: release-artifacts
 
 on:
   release:
-     types:
-       - published
+    types: [published]
 
 jobs:
   build:
@@ -16,6 +15,12 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: 16
+      - name: Set release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+      - name: Set build id
+        if: github.event.release.prerelease
+        run: echo "BUILD_ID=SNAPSHOT" >> $GITHUB_ENV
       - name: Build with Gradle
         run: ./gradlew build
       - name: Upload assets to GitHub

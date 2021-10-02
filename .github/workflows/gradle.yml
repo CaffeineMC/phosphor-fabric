@@ -14,8 +14,13 @@ jobs:
       with:
         distribution: 'adopt'
         java-version: 16
+    - name: Set release tag
+      if: startsWith(github.ref, 'refs/tags/')
+      run: echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
     - name: Build with Gradle
       run: ./gradlew build
+      env:
+        BUILD_ID: ${{ github.run_number }}
     - name: Upload build artifacts
       uses: actions/upload-artifact@v1
       with:

@@ -5,15 +5,16 @@ plugins {
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
-archivesBaseName = "${project.archives_base_name}-mc${project.minecraft_version}"
+archivesBaseName = project.archives_base_name
 group = project.maven_group
 
-def build_id = System.getenv("GITHUB_RUN_NUMBER");
+def release_tag = System.getenv("RELEASE_TAG")
+def build_id = System.getenv("BUILD_ID")
 
-if (build_id == null) {
-    version = "${project.mod_version}-SNAPSHOT"
-} else {
-    version = "${project.mod_version}+build.${build_id}"
+version = release_tag == null ? "mc${project.minecraft_version}-${project.mod_version}" : release_tag
+
+if (build_id != null) {
+    version += build_id == 'SNAPSHOT' ? '-SNAPSHOT' : "+build.${build_id}"
 }
 
 loom {
@@ -32,10 +33,10 @@ dependencies {
 }
 
 processResources {
-    inputs.property "version", project.version
+    inputs.property "version", project.mod_version
 
     filesMatching("fabric.mod.json") {
-        expand "version": project.version
+        expand "version": project.mod_version
     }
 }
 
