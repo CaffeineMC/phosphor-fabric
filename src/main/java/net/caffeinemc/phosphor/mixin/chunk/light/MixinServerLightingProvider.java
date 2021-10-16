@@ -1,7 +1,7 @@
 package net.caffeinemc.phosphor.mixin.chunk.light;
 
 import net.caffeinemc.phosphor.common.chunk.light.ServerLightingProviderAccess;
-import net.caffeinemc.phosphor.common.world.ThreadedAnvilChunkStorageAccess;
+import net.caffeinemc.phosphor.mixin.world.ThreadedAnvilChunkStorageAccess;
 import net.minecraft.server.world.ServerLightingProvider;
 import net.minecraft.server.world.ThreadedAnvilChunkStorage;
 import net.minecraft.util.Util;
@@ -33,9 +33,9 @@ public abstract class MixinServerLightingProvider extends MixinLightingProvider 
         this.enqueue(chunkPos.x, chunkPos.z, () -> 0, ServerLightingProvider.Stage.PRE_UPDATE, Util.debugRunnable(() -> {
             final ChunkSection[] chunkSections = chunk.getSectionArray();
 
-            for (int i = 0; i < chunkSections.length; ++i) {
+            for (int i = 0; i < chunk.countVerticalSections(); ++i) {
                 if (!ChunkSection.isEmpty(chunkSections[i])) {
-                    super.setSectionStatus(ChunkSectionPos.from(chunkPos, i), false);
+                    super.setSectionStatus(ChunkSectionPos.from(chunkPos, this.world.sectionIndexToCoord(i)), false);
                 }
             }
 

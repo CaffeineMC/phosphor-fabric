@@ -20,7 +20,7 @@ public abstract class MixinChunkNibbleArray implements IReadonly {
      * @author JellySquid
      */
     @Overwrite
-    private int get(int idx) {
+    public int get(int idx) {
         byte[] arr = this.bytes;
 
         if (arr == null) {

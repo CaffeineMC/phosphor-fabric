@@ -12,11 +12,10 @@ public class SkyLightChunkNibbleArray extends ReadonlyChunkNibbleArray {
     }
 
     @Override
-    protected int getIndex(final int x, final int y, final int z) {
-        return super.getIndex(x, 0, z);
+    protected int get(final int index) {
+        return super.get(index & 255);
     }
 
-    @SuppressWarnings("ConstantConditions")
     @Override
     public byte[] asByteArray() {
         byte[] byteArray = new byte[2048];

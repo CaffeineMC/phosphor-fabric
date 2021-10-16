@@ -132,10 +132,6 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
     @Final
     private LongSet queuedEdgeSections;
 
-    @Override
-    @Invoker("getLightSection")
-    public abstract ChunkNibbleArray callGetLightSection(final long sectionPos, final boolean cached);
-
     // A multiset of 'interesting' sections per chunk. Determines which sections to iterate over when enabling/disabling chunks, for initial lighting, etc.
     // This class tracks non-trivial lightmaps, (scheduled) non-empty chunks and nonOptimizable sections resp. Vanilla lightmaps
     @Unique
@@ -483,8 +479,12 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
         }
     }
 
-    @Override
-    public int getLightWithoutLightmap(final long blockPos) {
+    /**
+     * Returns the light value for a position that does not have an associated lightmap.
+     * This is analogous to {@link LightStorage#getLight(long)}, but uses the cached light data.
+     */
+    @Unique
+    protected int getLightWithoutLightmap(final long blockPos) {
         return 0;
     }
 

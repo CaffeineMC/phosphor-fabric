@@ -1,7 +1,7 @@
 {
     "required": true,
     "package": "net.caffeinemc.phosphor.mixin",
-    "compatibilityLevel": "JAVA_8",
+    "compatibilityLevel": "JAVA_16",
     "mixins": [
         "block.MixinAbstractBlockState",
         "block.MixinShapeCache",
@@ -20,7 +20,7 @@
         "chunk.light.MixinSkyLightStorageData",
         "chunk.light.MixinServerLightingProvider",
         "chunk.MixinProtoChunk",
-        "world.MixinThreadedAnvilChunkStorage",
+        "world.ThreadedAnvilChunkStorageAccess",
         "chunk.MixinChunkStatus",
         "world.MixinChunkSerializer"
     ],

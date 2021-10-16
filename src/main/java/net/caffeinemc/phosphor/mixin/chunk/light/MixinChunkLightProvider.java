@@ -14,9 +14,7 @@ import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkProvider;
 import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
@@ -38,7 +36,7 @@ import java.util.BitSet;
 public abstract class MixinChunkLightProvider
         extends MixinLevelPropagator implements InitialLightingAccess, LightProviderUpdateTracker {
     private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
-    private static final ChunkSection[] EMPTY_SECTION_ARRAY = new ChunkSection[16];
+    private static final ChunkSection[] EMPTY_SECTION_ARRAY = new ChunkSection[0];
 
     @Shadow
     @Final
@@ -57,6 +55,7 @@ public abstract class MixinChunkLightProvider
     private BitSet prevChunkBucketSet;
 
     @Inject(method = "clearChunkCache", at = @At("RETURN"))
+    @SuppressWarnings("ConstantConditions")
     private void onCleanup(CallbackInfo ci) {
         // This callback may be executed from the constructor above, and the object won't be initialized then
         if (this.cachedChunkPos != null) {
@@ -70,11 +69,6 @@ public abstract class MixinChunkLightProvider
         return ((LightStorageAccess) this.lightStorage).callHasSection(sectionPos);
     }
 
-    @Unique
-    protected ChunkNibbleArray getLightSection(final long chunkId) {
-        return ((LightStorageAccess) this.lightStorage).callGetLightSection(chunkId, true);
-    }
-
     // [VanillaCopy] method_20479
     /**
      * Returns the BlockState which represents the block at the specified coordinates in the world. This may return
@@ -83,10 +77,6 @@ public abstract class MixinChunkLightProvider
      */
     @Unique
     protected BlockState getBlockStateForLighting(int x, int y, int z) {
-        if (World.isOutOfBuildLimitVertically(y)) {
-            return DEFAULT_STATE;
-        }
-
         final long chunkPos = ChunkPos.toLong(x >> 4, z >> 4);
 
         for (int i = 0; i < 2; i++) {
@@ -102,11 +92,15 @@ public abstract class MixinChunkLightProvider
         return this.getBlockStateFromSection(this.getAndCacheChunkSections(x >> 4, z >> 4), x, y, z);
     }
 
-    private BlockState getBlockStateFromSection(ChunkSection[] sections, int x, int y, int z) {
-        ChunkSection section = sections[y >> 4];
+    private BlockState getBlockStateFromSection(final ChunkSection[] sections, final int x, final int y, final int z) {
+        final int index = this.chunkProvider.getWorld().getSectionIndex(y);
 
-        if (section != null) {
-            return section.getBlockState(x & 15, y & 15, z & 15);
+        if (index >= 0 && index < sections.length) {
+            final ChunkSection section = sections[index];
+
+            if (!ChunkSection.isEmpty(section)) {
+                return section.getBlockState(x & 15, y & 15, z & 15);
+            }
         }
 
         return DEFAULT_STATE;
@@ -288,9 +282,6 @@ public abstract class MixinChunkLightProvider
 
     @Shadow
     protected void resetLevel(long id) {}
-
-    @Shadow
-    protected abstract int getCurrentLevelFromSection(ChunkNibbleArray section, long blockPos);
 
     /**
      * @author PhiPro

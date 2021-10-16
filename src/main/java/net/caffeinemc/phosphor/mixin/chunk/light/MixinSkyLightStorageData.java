@@ -18,12 +18,12 @@ import org.spongepowered.asm.mixin.Unique;
 public abstract class MixinSkyLightStorageData extends MixinChunkToNibbleArrayMap
         implements SkyLightStorageDataAccess, SharedSkyLightData {
     @Shadow
-    private int minSectionY;
+    int minSectionY;
 
     @Mutable
     @Shadow
     @Final
-    private Long2IntOpenHashMap columnToTopSection;
+    Long2IntOpenHashMap columnToTopSection;
 
     // Our new double-buffered collection
     @Unique

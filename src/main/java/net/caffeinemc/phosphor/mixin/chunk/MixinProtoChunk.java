@@ -1,5 +1,11 @@
 package net.caffeinemc.phosphor.mixin.chunk;
 
+import net.minecraft.block.BlockState;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.world.chunk.ProtoChunk;
+import net.minecraft.world.chunk.light.LightingProvider;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -8,17 +14,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.chunk.ChunkSection;
-import net.minecraft.world.chunk.ChunkStatus;
-import net.minecraft.world.chunk.ProtoChunk;
-import net.minecraft.world.chunk.light.LightingProvider;
 
 @Mixin(ProtoChunk.class)
 public abstract class MixinProtoChunk {
     @Shadow
-    public abstract LightingProvider getLightingProvider();
+    private volatile LightingProvider lightingProvider;
 
     @Shadow
     public abstract ChunkStatus getStatus();
@@ -34,9 +34,9 @@ public abstract class MixinProtoChunk {
         ),
         locals = LocalCapture.CAPTURE_FAILHARD
     )
-    private void addLightmap(final BlockPos pos, final BlockState state, final boolean moved, final CallbackInfoReturnable<BlockState> ci, final int x, final int y, final int z, final ChunkSection section) {
+    private void addLightmap(final BlockPos pos, final BlockState state, final boolean moved, final CallbackInfoReturnable<BlockState> ci, final int x, final int y, final int z, final int index, final ChunkSection section) {
         if (this.getStatus().isAtLeast(PRE_LIGHT) && ChunkSection.isEmpty(section)) {
-            this.getLightingProvider().setSectionStatus(pos, false);
+            this.lightingProvider.setSectionStatus(pos, false);
         }
     }
 
@@ -54,9 +54,9 @@ public abstract class MixinProtoChunk {
         ),
         locals = LocalCapture.CAPTURE_FAILHARD
     )
-    private void removeLightmap(final BlockPos pos, final BlockState state, final boolean moved, final CallbackInfoReturnable<BlockState> ci, final int x, final int y, final int z, final ChunkSection section) {
+    private void removeLightmap(final BlockPos pos, final BlockState state, final boolean moved, final CallbackInfoReturnable<BlockState> ci, final int x, final int y, final int z, final int index, final ChunkSection section) {
         if (this.getStatus().isAtLeast(PRE_LIGHT) && ChunkSection.isEmpty(section)) {
-            this.getLightingProvider().setSectionStatus(pos, true);
+            this.lightingProvider.setSectionStatus(pos, true);
         }
     }
 }

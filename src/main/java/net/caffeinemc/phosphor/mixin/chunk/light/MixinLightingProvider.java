@@ -4,6 +4,7 @@ import net.caffeinemc.phosphor.common.chunk.light.InitialLightingAccess;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightingProvider;
 import org.spongepowered.asm.mixin.Final;
@@ -32,6 +33,10 @@ public abstract class MixinLightingProvider implements InitialLightingAccess
     @Shadow
     public void addLightSource(BlockPos pos, int level) {
     }
+
+    @Shadow
+    @Final
+    protected HeightLimitView world;
 
     @Override
     public void enableSourceLight(final long chunkPos) {
