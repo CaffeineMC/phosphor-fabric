@@ -943,6 +943,13 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage implements 
 
     @Override
     protected int getInitialLightmapComplexity(final long sectionPos, final ChunkNibbleArray lightmap) {
+        final long sectionPosAbove = this.getSectionAbove(sectionPos);
+        final int skyLight = this.getDirectSkylight(sectionPos);
+
+        if (lightmap.isUninitialized()) {
+            return sectionPosAbove == Long.MAX_VALUE ? 256 * skyLight : this.vanillaLightmapComplexities.get(sectionPosAbove);
+        }
+
         int complexity = 0;
 
         for (int y = 0; y < 15; ++y) {
@@ -953,8 +960,7 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage implements 
             }
         }
 
-        final ChunkNibbleArray lightmapAbove = this.getLightmapAbove(sectionPos);
-        final int skyLight = this.getDirectSkylight(sectionPos);
+        final ChunkNibbleArray lightmapAbove = sectionPosAbove == Long.MAX_VALUE ? null : this.getLightSection(sectionPosAbove, true);
 
         for (int z = 0; z < 16; ++z) {
             for (int x = 0; x < 16; ++x) {
@@ -1074,9 +1080,11 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage implements 
     private int initializeVanillaLightmapComplexity(final long sectionPos, final ChunkNibbleArray lightmap) {
         int complexity = 0;
 
-        for (int z = 0; z < 16; ++z) {
-            for (int x = 0; x < 16; ++x) {
-                complexity += lightmap.get(x, 0, z);
+        if (!lightmap.isUninitialized()) {
+            for (int z = 0; z < 16; ++z) {
+                for (int x = 0; x < 16; ++x) {
+                    complexity += lightmap.get(x, 0, z);
+                }
             }
         }
 

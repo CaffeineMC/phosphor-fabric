@@ -36,6 +36,10 @@ public abstract class MixinBlockLightStorage extends MixinLightStorage implement
 
     @Override
     protected int getInitialLightmapComplexity(final long sectionPos, final ChunkNibbleArray lightmap) {
+        if (lightmap.isUninitialized()) {
+            return 0;
+        }
+
         int complexity = 0;
 
         for (int y = 0; y < 16; ++y) {
