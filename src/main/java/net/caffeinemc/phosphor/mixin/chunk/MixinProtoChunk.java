@@ -35,7 +35,7 @@ public abstract class MixinProtoChunk {
         locals = LocalCapture.CAPTURE_FAILHARD
     )
     private void addLightmap(final BlockPos pos, final BlockState state, final boolean moved, final CallbackInfoReturnable<BlockState> ci, final int x, final int y, final int z, final int index, final ChunkSection section) {
-        if (this.getStatus().isAtLeast(PRE_LIGHT) && ChunkSection.isEmpty(section)) {
+        if (this.getStatus().isAtLeast(PRE_LIGHT) && section.isEmpty()) {
             this.lightingProvider.setSectionStatus(pos, false);
         }
     }
@@ -55,7 +55,7 @@ public abstract class MixinProtoChunk {
         locals = LocalCapture.CAPTURE_FAILHARD
     )
     private void removeLightmap(final BlockPos pos, final BlockState state, final boolean moved, final CallbackInfoReturnable<BlockState> ci, final int x, final int y, final int z, final int index, final ChunkSection section) {
-        if (this.getStatus().isAtLeast(PRE_LIGHT) && ChunkSection.isEmpty(section)) {
+        if (this.getStatus().isAtLeast(PRE_LIGHT) && section.isEmpty()) {
             this.lightingProvider.setSectionStatus(pos, true);
         }
     }

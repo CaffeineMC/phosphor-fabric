@@ -98,7 +98,7 @@ public abstract class MixinChunkLightProvider
         if (index >= 0 && index < sections.length) {
             final ChunkSection section = sections[index];
 
-            if (!ChunkSection.isEmpty(section)) {
+            if (!section.isEmpty()) {
                 return section.getBlockState(x & 15, y & 15, z & 15);
             }
         }

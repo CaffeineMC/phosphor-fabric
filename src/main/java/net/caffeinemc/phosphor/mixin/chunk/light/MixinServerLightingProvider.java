@@ -34,7 +34,7 @@ public abstract class MixinServerLightingProvider extends MixinLightingProvider 
             final ChunkSection[] chunkSections = chunk.getSectionArray();
 
             for (int i = 0; i < chunk.countVerticalSections(); ++i) {
-                if (!ChunkSection.isEmpty(chunkSections[i])) {
+                if (!chunkSections[i].isEmpty()) {
                     super.setSectionStatus(ChunkSectionPos.from(chunkPos, this.world.sectionIndexToCoord(i)), false);
                 }
             }

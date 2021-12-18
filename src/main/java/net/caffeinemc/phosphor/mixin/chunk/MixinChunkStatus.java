@@ -42,8 +42,8 @@ public class MixinChunkStatus {
     )
     private static ChunkStatus injectLightmapSetup(final String id, final ChunkStatus previous, final int taskMargin, final EnumSet<Heightmap.Type> heightMapTypes, final ChunkStatus.ChunkType chunkType, final ChunkStatus.GenerationTask task) {
         return register(id, previous, taskMargin, heightMapTypes, chunkType,
-            (status, executor, world, generator, structureManager, lightingProvider, function, surroundingChunks, chunk) ->
-                task.doWork(status, executor, world, generator, structureManager, lightingProvider, function, surroundingChunks, chunk).thenCompose(
+            (status, executor, world, generator, structureManager, lightingProvider, function, surroundingChunks, chunk, force) ->
+                task.doWork(status, executor, world, generator, structureManager, lightingProvider, function, surroundingChunks, chunk, force).thenCompose(
                     either -> getPreLightFuture(lightingProvider, either)
                 ),
             (status, world, structureManager, lightingProvider, function, chunk) ->

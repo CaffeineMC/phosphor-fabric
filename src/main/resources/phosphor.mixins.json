@@ -1,7 +1,7 @@
 {
     "required": true,
     "package": "net.caffeinemc.phosphor.mixin",
-    "compatibilityLevel": "JAVA_16",
+    "compatibilityLevel": "JAVA_17",
     "mixins": [
         "block.MixinAbstractBlockState",
         "block.MixinShapeCache",
@@ -23,9 +23,6 @@
         "world.ThreadedAnvilChunkStorageAccess",
         "chunk.MixinChunkStatus",
         "world.MixinChunkSerializer"
-    ],
-    "client": [
-	    "client.world.MixinClientWorld"
     ],
     "injectors": {
         "defaultRequire": 1
