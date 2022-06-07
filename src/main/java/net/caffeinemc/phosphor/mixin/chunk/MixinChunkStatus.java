@@ -36,18 +36,18 @@ public class MixinChunkStatus {
         ),
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/world/chunk/ChunkStatus;register(Ljava/lang/String;Lnet/minecraft/world/chunk/ChunkStatus;ILjava/util/EnumSet;Lnet/minecraft/world/chunk/ChunkStatus$ChunkType;Lnet/minecraft/world/chunk/ChunkStatus$GenerationTask;)Lnet/minecraft/world/chunk/ChunkStatus;",
+            target = "Lnet/minecraft/world/chunk/ChunkStatus;register(Ljava/lang/String;Lnet/minecraft/world/chunk/ChunkStatus;ILjava/util/EnumSet;Lnet/minecraft/world/chunk/ChunkStatus$ChunkType;Lnet/minecraft/world/chunk/ChunkStatus$GenerationTask;Lnet/minecraft/world/chunk/ChunkStatus$LoadTask;)Lnet/minecraft/world/chunk/ChunkStatus;",
             ordinal = 0
         )
     )
-    private static ChunkStatus injectLightmapSetup(final String id, final ChunkStatus previous, final int taskMargin, final EnumSet<Heightmap.Type> heightMapTypes, final ChunkStatus.ChunkType chunkType, final ChunkStatus.GenerationTask task) {
+    private static ChunkStatus injectLightmapSetup(final String id, final ChunkStatus previous, final int taskMargin, final EnumSet<Heightmap.Type> heightMapTypes, final ChunkStatus.ChunkType chunkType, final ChunkStatus.GenerationTask task, final ChunkStatus.LoadTask loadTask) {
         return register(id, previous, taskMargin, heightMapTypes, chunkType,
             (status, executor, world, generator, structureManager, lightingProvider, function, surroundingChunks, chunk, force) ->
                 task.doWork(status, executor, world, generator, structureManager, lightingProvider, function, surroundingChunks, chunk, force).thenCompose(
                     either -> getPreLightFuture(lightingProvider, either)
                 ),
             (status, world, structureManager, lightingProvider, function, chunk) ->
-                STATUS_BUMP_LOAD_TASK.doWork(status, world, structureManager, lightingProvider, function, chunk).thenCompose(
+                loadTask.doWork(status, world, structureManager, lightingProvider, function, chunk).thenCompose(
                     either -> getPreLightFuture(lightingProvider, either)
                 )
             );

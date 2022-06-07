@@ -21,8 +21,7 @@
         "chunk.light.MixinServerLightingProvider",
         "chunk.MixinProtoChunk",
         "world.ThreadedAnvilChunkStorageAccess",
-        "chunk.MixinChunkStatus",
-        "world.MixinChunkSerializer"
+        "chunk.MixinChunkStatus"
     ],
     "injectors": {
         "defaultRequire": 1
