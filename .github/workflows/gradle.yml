@@ -21,8 +21,15 @@ jobs:
       run: ./gradlew build
       env:
         BUILD_ID: ${{ github.run_number }}
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v1
+    - name: Upload prod artifacts
+      uses: actions/upload-artifact@v3
       with:
         name: build-artifacts
-        path: build/libs
+        path: |
+          build/libs/
+          !build/libs/*-sources.jar
+    - name: Upload dev artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: build/devlibs/
