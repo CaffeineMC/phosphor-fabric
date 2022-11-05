@@ -1,9 +1,13 @@
 package net.caffeinemc.phosphor.mixin.chunk.light;
 
+import java.util.function.Supplier;
+
 import net.caffeinemc.phosphor.common.chunk.light.InitialLightingAccess;
+import net.caffeinemc.phosphor.common.util.IProfiling;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.util.profiler.Profiler;
 import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightingProvider;
@@ -12,7 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(LightingProvider.class)
-public abstract class MixinLightingProvider implements InitialLightingAccess
+public abstract class MixinLightingProvider implements InitialLightingAccess, IProfiling
 {
     @Shadow
     @Final
@@ -57,6 +61,17 @@ public abstract class MixinLightingProvider implements InitialLightingAccess
 
         if (this.skyLightProvider != null) {
             ((InitialLightingAccess) this.skyLightProvider).enableLightUpdates(chunkPos);
+        }
+    }
+
+    @Override
+    public void setProfiler(final Supplier<Profiler> profiler) {
+        if (this.blockLightProvider != null) {
+            ((IProfiling) this.blockLightProvider).setProfiler(profiler);
+        }
+
+        if (this.skyLightProvider != null) {
+            ((IProfiling) this.skyLightProvider).setProfiler(profiler);
         }
     }
 }

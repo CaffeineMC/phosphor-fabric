@@ -20,12 +20,15 @@ import net.caffeinemc.phosphor.common.chunk.light.IReadonly;
 import net.caffeinemc.phosphor.common.chunk.light.LevelPropagatorAccess;
 import net.caffeinemc.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import net.caffeinemc.phosphor.common.chunk.light.LightStorageAccess;
+import net.caffeinemc.phosphor.common.util.IProfiling;
 import net.caffeinemc.phosphor.common.util.chunk.light.EmptyChunkNibbleArray;
 import net.caffeinemc.phosphor.common.util.math.ChunkSectionPosHelper;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.profiler.DummyProfiler;
+import net.minecraft.util.profiler.Profiler;
 import net.minecraft.world.LightType;
 import net.minecraft.world.SectionDistanceLevelPropagator;
 import net.minecraft.world.chunk.ChunkNibbleArray;
@@ -49,9 +52,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.LongPredicate;
+import java.util.function.Supplier;
 
 @Mixin(LightStorage.class)
-public abstract class MixinLightStorage extends SectionDistanceLevelPropagator implements LightStorageAccess {
+public abstract class MixinLightStorage extends SectionDistanceLevelPropagator implements LightStorageAccess, IProfiling {
     protected MixinLightStorage() {
         super(0, 0, 0);
     }
@@ -336,6 +340,14 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
         if (lightProvider == null) {
             this.checkForUpdates();
         }
+    }
+
+    @Unique
+    protected Supplier<Profiler> profiler = () -> DummyProfiler.INSTANCE;
+
+    @Override
+    public void setProfiler(final Supplier<Profiler> profiler) {
+        this.profiler = profiler;
     }
 
     /**
@@ -699,6 +711,13 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
 
     @Unique
     private void initializeChunks() {
+        if (this.markedEnabledChunks.isEmpty()) {
+            return;
+        }
+
+        final Profiler profiler = this.profiler.get();
+        profiler.push("init_chunks");
+
         this.storage.clearCache();
 
         for (final LongIterator cit = this.markedEnabledChunks.iterator(); cit.hasNext(); ) {
@@ -735,6 +754,8 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
         this.storage.clearCache();
 
         this.markedEnabledChunks.clear();
+
+        profiler.pop();
     }
 
     @Unique
@@ -911,6 +932,13 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
 
     @Unique
     private void addQueuedLightmaps(final ChunkLightProvider<?, ?> lightProvider) {
+        if (this.queuedSections.isEmpty()) {
+            return;
+        }
+
+        final Profiler profiler = this.profiler.get();
+        profiler.push("replace_lightmaps");
+
         for (final ObjectIterator<Long2ObjectMap.Entry<ChunkNibbleArray>> it = Long2ObjectMaps.fastIterator(this.queuedSections); it.hasNext(); ) {
             final Long2ObjectMap.Entry<ChunkNibbleArray> entry = it.next();
 
@@ -940,6 +968,8 @@ public abstract class MixinLightStorage extends SectionDistanceLevelPropagator i
                 this.setLightmapComplexity(sectionPos, this.getInitialLightmapComplexity(sectionPos, lightmap));
             }
         }
+
+        profiler.pop();
     }
 
     /**

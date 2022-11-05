@@ -19,6 +19,7 @@ import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.profiler.Profiler;
 import net.minecraft.world.chunk.ChunkNibbleArray;
 import net.minecraft.world.chunk.ChunkToNibbleArrayMap;
 import net.minecraft.world.chunk.light.ChunkLightProvider;
@@ -555,6 +556,9 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage implements 
             return;
         }
 
+        final Profiler profiler = this.profiler.get();
+        profiler.push("init_skylight");
+
         final LevelPropagatorAccess levelPropagator = (LevelPropagatorAccess) lightProvider;
 
         for (final LongIterator cit = this.initSkylightChunks.iterator(); cit.hasNext(); ) {
@@ -652,6 +656,8 @@ public abstract class MixinSkyLightStorage extends MixinLightStorage implements 
 
         levelPropagator.checkForUpdates();
         this.initSkylightChunks.clear();
+
+        profiler.pop();
     }
 
     @Unique

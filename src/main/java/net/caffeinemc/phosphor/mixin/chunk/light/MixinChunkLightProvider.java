@@ -6,12 +6,15 @@ import net.caffeinemc.phosphor.common.block.BlockStateLightInfoAccess;
 import net.caffeinemc.phosphor.common.chunk.light.InitialLightingAccess;
 import net.caffeinemc.phosphor.common.chunk.light.LightProviderUpdateTracker;
 import net.caffeinemc.phosphor.common.chunk.light.LightStorageAccess;
+import net.caffeinemc.phosphor.common.util.IProfiling;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.profiler.DummyProfiler;
+import net.minecraft.util.profiler.Profiler;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.chunk.Chunk;
@@ -31,10 +34,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.function.Supplier;
 
 @Mixin(ChunkLightProvider.class)
 public abstract class MixinChunkLightProvider
-        extends MixinLevelPropagator implements InitialLightingAccess, LightProviderUpdateTracker {
+        extends MixinLevelPropagator implements InitialLightingAccess, LightProviderUpdateTracker, IProfiling {
     private static final BlockState DEFAULT_STATE = Blocks.AIR.getDefaultState();
     private static final ChunkSection[] EMPTY_SECTION_ARRAY = new ChunkSection[0];
 
@@ -321,5 +325,55 @@ public abstract class MixinChunkLightProvider
     )
     private void runCleanups(final CallbackInfoReturnable<Integer> ci) {
         ((LightStorageAccess) this.lightStorage).runCleanups();
+    }
+
+    @Unique
+    protected Supplier<Profiler> profiler = () -> DummyProfiler.INSTANCE;
+
+    @Override
+    public void setProfiler(final Supplier<Profiler> profiler) {
+        this.profiler = profiler;
+        ((IProfiling) this.lightStorage).setProfiler(profiler);
+    }
+
+    @Inject(
+        method = "doLightUpdates(IZZ)I",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/chunk/light/LightStorage;applyPendingUpdates(I)I"
+        )
+    )
+    private void startProfilingDistanceTracking(final CallbackInfoReturnable<Integer> ci) {
+        this.profiler.get().push("update_distances");
+    }
+
+    @Inject(
+        method = "doLightUpdates(IZZ)I",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/chunk/light/ChunkLightProvider;applyPendingUpdates(I)I"
+        )
+    )
+    private void startProfilingLightUpdates(final CallbackInfoReturnable<Integer> ci) {
+        this.profiler.get().push("propagate_light");
+    }
+
+    @Inject(
+        method = "doLightUpdates(IZZ)I",
+        at = {
+            @At(
+                value = "INVOKE",
+                target = "Lnet/minecraft/world/chunk/light/LightStorage;applyPendingUpdates(I)I",
+                shift = At.Shift.AFTER
+            ),
+            @At(
+                value = "INVOKE",
+                target = "Lnet/minecraft/world/chunk/light/ChunkLightProvider;applyPendingUpdates(I)I",
+                shift = At.Shift.AFTER
+            )
+        }
+    )
+    private void endProfiling(final CallbackInfoReturnable<Integer> ci) {
+        this.profiler.get().pop();
     }
 }

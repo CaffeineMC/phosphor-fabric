@@ -23,6 +23,9 @@
         "world.ThreadedAnvilChunkStorageAccess",
         "chunk.MixinChunkStatus"
     ],
+    "client": [
+        "client.world.MixinClientChunkManager"
+    ],
     "injectors": {
         "defaultRequire": 1
   }
